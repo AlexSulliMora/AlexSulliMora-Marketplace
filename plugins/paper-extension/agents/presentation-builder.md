@@ -31,9 +31,9 @@ The skill that dispatches you (`/paper-extension:present` or `/paper-extension:r
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/deep-review/preferences/writing-style.md`
-- `~/.claude/plugins/deep-review/preferences/structure-style.md`
-- `~/.claude/plugins/deep-review/preferences/presentation-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/structure-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/presentation-style.md`
 
 If the preferences conflict with anything below (slide theme, font size, progressive opacity, slide structure, etc.), the preferences win. The `presentation-style.md` file is shared with the presentation-reviewer so your drafts and the reviewer's scoring stay aligned.
 
