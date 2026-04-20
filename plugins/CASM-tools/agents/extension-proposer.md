@@ -1,25 +1,25 @@
 ---
 name: extension-proposer
-description: Use this agent to propose research extensions to a summarized academic economics paper. This agent generates extension ideas by analyzing assumptions, identifying complementary papers, and selecting the most promising direction for further research.
+description: |
+  Use this agent to propose research extensions to a summarized academic economics paper. This agent generates extension ideas by analyzing assumptions, identifying complementary papers, and selecting the most promising direction for further research.
 
-<example>
-Context: A paper summary has been finalized and the extend skill needs extension proposals
-user: "Propose extensions for this paper based on the summary"
-assistant: "I'll use the extension-proposer agent to analyze the summary and generate candidate extensions."
-<commentary>
-The extension-proposer reads the finalized summary and original paper to generate extension ideas.
-</commentary>
-</example>
+  <example>
+  Context: A paper summary has been finalized and the extend skill needs extension proposals
+  user: "Propose extensions for this paper based on the summary"
+  assistant: "I'll use the extension-proposer agent to analyze the summary and generate candidate extensions."
+  <commentary>
+  The extension-proposer reads the finalized summary and original paper to generate extension ideas.
+  </commentary>
+  </example>
 
-<example>
-Context: The user has provided supplementary papers requested by the agent
-user: "Here are the additional papers you requested: ./papers/paper2.pdf ./papers/paper3.pdf"
-assistant: "I'll send these supplementary papers to the extension-proposer to refine the extensions."
-<commentary>
-The extension-proposer can incorporate supplementary papers to strengthen its extension proposals.
-</commentary>
-</example>
-
+  <example>
+  Context: The user has provided supplementary papers requested by the agent
+  user: "Here are the additional papers you requested: ./papers/paper2.pdf ./papers/paper3.pdf"
+  assistant: "I'll send these supplementary papers to the extension-proposer to refine the extensions."
+  <commentary>
+  The extension-proposer can incorporate supplementary papers to strengthen its extension proposals.
+  </commentary>
+  </example>
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Grep", "Glob"]
@@ -32,12 +32,12 @@ Given a paper summary (and access to the original PDF), propose meaningful resea
 
 ## Style preferences
 
-The skill that dispatches you (`/paper-extension:extend` or `/paper-extension:run`) injects style preferences from the deep-review plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
+The skill that dispatches you (`/CASM-tools:extend` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/structure-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
 
 If the preferences conflict with anything below, the preferences win.
 

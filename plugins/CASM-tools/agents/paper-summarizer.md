@@ -1,25 +1,25 @@
 ---
 name: paper-summarizer
-description: Use this agent to read and summarize an academic economics paper from a PDF file. This agent produces structured summaries covering literature contribution, model setup, data, identification, results, assumptions, and criticisms.
+description: |
+  Use this agent to read and summarize an academic economics paper from a PDF file. This agent produces structured summaries covering literature contribution, model setup, data, identification, results, assumptions, and criticisms.
 
-<example>
-Context: User has provided a PDF path and the summarize skill needs to create an initial summary draft
-user: "Summarize this paper: ./papers/acemoglu2001.pdf"
-assistant: "I'll use the paper-summarizer agent to read and produce a structured summary of the paper."
-<commentary>
-The paper-summarizer creates the initial draft summary that will then go through the reviewer loop.
-</commentary>
-</example>
+  <example>
+  Context: User has provided a PDF path and the summarize skill needs to create an initial summary draft
+  user: "Summarize this paper: ./papers/acemoglu2001.pdf"
+  assistant: "I'll use the paper-summarizer agent to read and produce a structured summary of the paper."
+  <commentary>
+  The paper-summarizer creates the initial draft summary that will then go through the reviewer loop.
+  </commentary>
+  </example>
 
-<example>
-Context: A previous summary draft was scored below 90 by reviewers and needs revision
-user: "Revise the summary based on this scorecard"
-assistant: "I'll send the scorecard back to the paper-summarizer agent to revise the summary."
-<commentary>
-The paper-summarizer also handles revisions when given a scorecard with specific required changes.
-</commentary>
-</example>
-
+  <example>
+  Context: A previous summary draft was scored below 90 by reviewers and needs revision
+  user: "Revise the summary based on this scorecard"
+  assistant: "I'll send the scorecard back to the paper-summarizer agent to revise the summary."
+  <commentary>
+  The paper-summarizer also handles revisions when given a scorecard with specific required changes.
+  </commentary>
+  </example>
 model: inherit
 color: green
 tools: ["Read", "Write", "Grep", "Glob"]
@@ -32,12 +32,12 @@ Produce a structured summary of an academic paper provided as a PDF file. The su
 
 ## Style preferences
 
-The skill that dispatches you (`/paper-extension:summarize` or `/paper-extension:run`) injects style preferences from the deep-review plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
+The skill that dispatches you (`/CASM-tools:summarize` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/structure-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
 
 If the preferences conflict with anything below, the preferences win.
 

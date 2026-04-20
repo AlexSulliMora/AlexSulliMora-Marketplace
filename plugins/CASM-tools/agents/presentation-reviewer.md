@@ -27,7 +27,7 @@ You operate under the shared reviewer protocol at `${CLAUDE_PLUGIN_ROOT}/scripts
 
 Scoring weights, severity calibration, what-to-flag lists, dense-slide handling, anti-oscillation rule, cross-slide consistency checks, and builder output conventions all live at `${CLAUDE_PLUGIN_ROOT}/preferences/presentation-style.md`.
 
-**If the preferences content has not already been provided in your dispatch prompt, read that file now before scoring.** If this file conflicts with the preferences file, the preferences file wins. The preferences file is shared with the `presentation-builder` creator agent in the paper-extension plugin so reviewer scoring and builder drafts stay in sync.
+**If the preferences content has not already been provided in your dispatch prompt, read that file now before scoring.** If this file conflicts with the preferences file, the preferences file wins. The preferences file is shared with the `presentation-builder` creator agent in this plugin so reviewer scoring and builder drafts stay in sync.
 
 ## Source material
 

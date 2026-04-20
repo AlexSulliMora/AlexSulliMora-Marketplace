@@ -1,13 +1,13 @@
 ---
 name: review-document
 description: |
-  Run the creator/reviewer tiered cascade on a deliverable artifact. Use when the user types /deep-review:review-document, says "review the [draft/slides/code/section]", asks for a full quality pass, or requests specific reviewers (writing, structure, math, code, simplicity, adversarial, presentation, consistency, factual, all, thorough) on a file or recently materialized inline text. The cascade operates on snapshots in the logs directory; the live file is never touched until the user's checkpoint decision.
+  Run the creator/reviewer tiered cascade on a deliverable artifact. Use when the user types /CASM-tools:review-document, says "review the [draft/slides/code/section]", asks for a full quality pass, or requests specific reviewers (writing, structure, math, code, simplicity, adversarial, presentation, consistency, factual, all, thorough) on a file or recently materialized inline text. The cascade operates on snapshots in the logs directory; the live file is never touched until the user's checkpoint decision.
 argument-hint: "[scope phrase] [paths]"
 disable-model-invocation: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 ---
 
-# /deep-review:review-document
+# /CASM-tools:review-document
 
 Run the creator/reviewer tiered cascade on a named artifact. Groups selected reviewers into scope tiers, dispatches each tier in parallel after the previous tier converges (or hits its cap), auto-applies any remaining MAJOR/MINOR items, optionally runs a thorough audit pass, and raises a mandatory user checkpoint before the live file is modified.
 
@@ -23,10 +23,10 @@ You do not need to include preferences content manually in the dispatch prompt. 
 
 Two invocation shapes cover most use:
 
-- `/deep-review:review-document <path>` — auto-classifies reviewers from the file extension and runs the cascade.
-- `/deep-review:review-document <scope-phrase> <path>` — names specific reviewers (e.g. `writing`, `all`, `thorough`), either alongside or in place of the auto-classified set.
+- `/CASM-tools:review-document <path>` — auto-classifies reviewers from the file extension and runs the cascade.
+- `/CASM-tools:review-document <scope-phrase> <path>` — names specific reviewers (e.g. `writing`, `all`, `thorough`), either alongside or in place of the auto-classified set.
 
-See "Examples" below for concrete walkthroughs. Invoking `/deep-review:review-document <path>` on an artifact with a `REVIEW_SUSPENDED.md` file in its logs directory auto-resumes the suspended cascade.
+See "Examples" below for concrete walkthroughs. Invoking `/CASM-tools:review-document <path>` on an artifact with a `REVIEW_SUSPENDED.md` file in its logs directory auto-resumes the suspended cascade.
 
 ## Argument parsing
 
@@ -60,7 +60,7 @@ Remaining tokens form the scope phrase. Each token matches one of these:
 | `all` | dispatch every reviewer, including factual |
 | `thorough` | run a final audit pass after auto-apply (see Thorough audit below); combines with any other scope tokens |
 
-Unknown tokens trigger "did you mean" clarification. Example: `/deep-review:review-document for correctness and speed` → "Unknown scope tokens: 'correctness', 'speed'. Did you mean `code` or `simplicity`?"
+Unknown tokens trigger "did you mean" clarification. Example: `/CASM-tools:review-document for correctness and speed` → "Unknown scope tokens: 'correctness', 'speed'. Did you mean `code` or `simplicity`?"
 
 ### 3. Empty-scope auto-classification
 
@@ -112,10 +112,10 @@ See `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md` for the tier → reviewer 
    - paper/slides.qmd (last written 2026-04-17 14:22)
    - analysis/event-study.py (last written 2026-04-17 13:05)
    - state/inline/inline-2026-04-17T09-30.md (materialized chat content)
-   Invoke /deep-review:review-document <path> to pick one, or write a new artifact first.
+   Invoke /CASM-tools:review-document <path> to pick one, or write a new artifact first.
    ```
 
-5. If the user invoked `/deep-review:review-document adversarial` with no explicit path AND the last substantial turn produced chat content rather than a file Write, materialize the chat content:
+5. If the user invoked `/CASM-tools:review-document adversarial` with no explicit path AND the last substantial turn produced chat content rather than a file Write, materialize the chat content:
    - Scan the recent message for a reviewable block (≥ 150 words of connected writing).
    - Refuse materialization if the current turn included a WebFetch or PDF read (security). Require explicit user confirmation in that case.
    - Write to `state/inline/inline-<timestamp>.md` with first line: `<!-- SOURCE: untrusted chat prose, not user-authored -->`.
@@ -190,7 +190,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 | External edit to live file during cascade | Halt with prompt: "live file edited externally — restart, continue from current snapshot, or abort?" |
 | Tier cap hit with CRITICAL remaining, user AFK | Write `REVIEW_SUSPENDED.md`, release lock. Next invocation auto-resumes. |
 | Auto-apply cap hit with items remaining | Proceed to checkpoint with items in the combined scorecard as unresolved. User can `fix <n>` or accept. |
-| Concurrent `/deep-review:review-document` on same artifact | Rejected by lockfile. |
+| Concurrent `/CASM-tools:review-document` on same artifact | Rejected by lockfile. |
 | Unknown scope token | Print "Unknown scope tokens: ... Did you mean ...?" and halt. No silent best-guess. |
 | Preference-injection hook disabled or fails | Reviewers fall back to reading their preferences file directly via the pointer in the agent body. No cascade regression; preferences still reach the reviewer, just via a file read instead of the dispatch prompt. |
 
@@ -199,7 +199,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 ### Scope-only invocation
 
 ```
-/deep-review:review-document the slides for writing only
+/CASM-tools:review-document the slides for writing only
 ```
 
 1. Path tokens: "slides" → registry lookup → `paper/slides.qmd`.
@@ -215,7 +215,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 ### Path-only invocation
 
 ```
-/deep-review:review-document analysis.py
+/CASM-tools:review-document analysis.py
 ```
 
 1. Path tokens: `analysis.py` → resolved under cwd.
@@ -231,7 +231,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 ### Thorough audit
 
 ```
-/deep-review:review-document thorough paper.md
+/CASM-tools:review-document thorough paper.md
 ```
 
 1. Path tokens: `paper.md`.
@@ -249,7 +249,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 ### All reviewers
 
 ```
-/deep-review:review-document all paper/writeup.qmd
+/CASM-tools:review-document all paper/writeup.qmd
 ```
 
 1. Path tokens: `paper/writeup.qmd`.
@@ -259,7 +259,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 ### Adversarial on chat content
 
 ```
-/deep-review:review-document adversarial
+/CASM-tools:review-document adversarial
 ```
 
 User has just written a paragraph-long research idea in chat.
@@ -277,7 +277,7 @@ User has just written a paragraph-long research idea in chat.
 ### Resume a suspended review
 
 ```
-/deep-review:review-document paper.md
+/CASM-tools:review-document paper.md
 ```
 
 If `<logs_dir>/REVIEW_SUSPENDED.md` exists (prior cascade halted with CRITICAL items unresolved), the skill auto-detects and resumes from the saved state; no explicit resume command is needed.

@@ -1,13 +1,13 @@
 ---
 name: run
 description: This skill should be used when the user asks to "run the full paper pipeline", "analyze and extend this paper", "do everything for this paper", or wants to execute all three stages (summarize, extend, present) end-to-end on an academic paper PDF with minimal manual intervention.
-argument-hint: <path-to-paper.pdf> [summary only | extension only] [ppt | pdf]
+argument-hint: "<path-to-paper.pdf> [summary only | extension only] [ppt | pdf]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 
 # Run Full Paper Pipeline
 
-Execute the complete paper analysis pipeline: preprocess, summarize, extend, and present. Each stage invokes the corresponding `paper-extension:*` skill, which delegates its review loop to `/deep-review:review-document`.
+Execute the complete paper analysis pipeline: preprocess, summarize, extend, and present. Each stage invokes the corresponding `CASM-tools:*` skill, which delegates its review loop to `/CASM-tools:review-document`.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ Execute the complete paper analysis pipeline: preprocess, summarize, extend, and
 
 ## Argument Parsing
 
-Pass through to `paper-extension:present`:
+Pass through to `CASM-tools:present`:
 - `summary only` / `extension only` → presentation scope
 - `ppt` / `pdf` → presentation format
 
@@ -27,7 +27,7 @@ If `summary only` is specified, the extend stage is skipped.
 
 Maintain a single pipeline-level session log:
 
-1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_full-pipeline.md` using `~/.claude/plugins/deep-review/scripts/session-log-template.md`.
+1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_full-pipeline.md` using `${CLAUDE_PLUGIN_ROOT}/scripts/session-log-template.md`.
 2. **After each stage**: Update the Pipeline Progress table with stage status, final scores, cascade logs path.
 3. **After paper requests**: Record papers requested during extend and which were provided.
 4. **At end**: Update Status, Verification Results, Learnings.
@@ -52,15 +52,15 @@ paper-extension/session-logs/
 
 Announce:
 
-> Starting full pipeline for [paper name]. Four stages: preprocess, summarize, extend, present. Each review stage hands its draft to `/deep-review:review-document`, which presents its own User Review Checkpoint. You will see three checkpoints total. I will also pause if the extension-proposer requests supplementary papers.
+> Starting full pipeline for [paper name]. Four stages: preprocess, summarize, extend, present. Each review stage hands its draft to `/CASM-tools:review-document`, which presents its own User Review Checkpoint. You will see three checkpoints total. I will also pause if the extension-proposer requests supplementary papers.
 
 ### 2. Stage 0: Preprocess (auto)
 
-Invoke `paper-extension:preprocess` via the Skill tool. Record outcome (success / cache-hit / fallback) in the pipeline log.
+Invoke `CASM-tools:preprocess` via the Skill tool. Record outcome (success / cache-hit / fallback) in the pipeline log.
 
 ### 3. Stage 1: Summarize
 
-Invoke `paper-extension:summarize` via the Skill tool. Wait for it to return (includes its delegation to `/deep-review:review-document` and the cascade's User Review Checkpoint).
+Invoke `CASM-tools:summarize` via the Skill tool. Wait for it to return (includes its delegation to `/CASM-tools:review-document` and the cascade's User Review Checkpoint).
 
 After return, read the final state from `paper-extension/session-logs/YYYY-MM-DD_summarize.md` and `paper-extension/summary-logs/summary-scorecard.md`. Report final scores, convergence, and accepted-item count.
 
@@ -68,11 +68,11 @@ After return, read the final state from `paper-extension/session-logs/YYYY-MM-DD
 
 If scope is `summary only`, skip to Stage 3.
 
-Otherwise, invoke `paper-extension:extend` via the Skill tool. If the extension-proposer pauses for supplementary paper requests, the extend skill handles the user interaction. Report final state.
+Otherwise, invoke `CASM-tools:extend` via the Skill tool. If the extension-proposer pauses for supplementary paper requests, the extend skill handles the user interaction. Report final state.
 
 ### 5. Stage 3: Present
 
-Invoke `paper-extension:present` via the Skill tool, passing through the scope and format options from `/paper-extension:run`. Report final state.
+Invoke `CASM-tools:present` via the Skill tool, passing through the scope and format options from `/CASM-tools:run`. Report final state.
 
 ### 6. Final Report
 
@@ -107,5 +107,5 @@ If a stage hits the cascade's iteration cap, the checkpoint still fires with the
 
 ## Notes
 
-- Each cascade logs its full iteration trail under `docs/reviews/<artifact>-<timestamp>/`. The per-stage skills mirror the final combined scorecard and accepted-issues into `paper-extension/<stage>-logs/` so `/paper-extension:meta-review` can find them.
-- The pipeline is not resumable mid-stage, but each stage's output is durable. If interrupted after summarize, resume with `/paper-extension:extend <pdf>` directly.
+- Each cascade logs its full iteration trail under `docs/reviews/<artifact>-<timestamp>/`. The per-stage skills mirror the final combined scorecard and accepted-issues into `paper-extension/<stage>-logs/` so `/CASM-tools:meta-review` can find them.
+- The pipeline is not resumable mid-stage, but each stage's output is durable. If interrupted after summarize, resume with `/CASM-tools:extend <pdf>` directly.

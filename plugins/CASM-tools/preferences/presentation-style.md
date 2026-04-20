@@ -1,6 +1,6 @@
 # Presentation Style Preferences
 
-Scoring weights, severity calibration, and style rules for the presentation-reviewer AND the presentation-builder creator (in the paper-extension plugin). Edit this file to tune both — changes propagate to reviewer scoring and to the builder's initial drafts.
+Scoring weights, severity calibration, and style rules for the presentation-reviewer AND the presentation-builder creator. Edit this file to tune both — changes propagate to reviewer scoring and to the builder's initial drafts.
 
 ## Scoring weights
 
@@ -100,7 +100,7 @@ Check consistency in:
 
 When flagging a consistency issue, list every affected slide. File once under the lowest-numbered affected slide.
 
-### Builder output conventions (paper-extension's presentation-builder)
+### Builder output conventions (presentation-builder creator)
 
 - Default Revealjs YAML: `theme: serif`, `slide-number: true`, `transition: fade`, `width: 1050`, `height: 700`, `margin: 0.1`, `fontsize: 24pt`.
 - Include the progressive-opacity CSS block in the YAML header for Revealjs.

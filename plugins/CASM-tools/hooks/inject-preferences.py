@@ -4,11 +4,11 @@
 # ///
 """PreToolUse hook: inject style preferences into Agent tool dispatches.
 
-When the Agent tool is called with a subagent_type that matches one of the
-deep-review reviewer agents or a paper-extension creator agent, prepend the
-relevant preferences-file contents to the prompt field of tool_input. The
-review cascade then scores the dispatched agent under the preferences the
-user configured in ${CLAUDE_PLUGIN_ROOT}/preferences/.
+When the Agent tool is called with a subagent_type that matches a known
+reviewer or paper-pipeline creator agent, prepend the relevant
+preferences-file contents to the prompt field of tool_input. The review
+cascade then scores the dispatched agent under the preferences the user
+configured in ${CLAUDE_PLUGIN_ROOT}/preferences/.
 
 Fails silently on any error (pass-through), so a broken hook never blocks a
 tool call — agents fall back to reading their preferences file directly per
@@ -22,10 +22,10 @@ from pathlib import Path
 
 # Mapping from subagent_type → list of preference filenames (relative to
 # the plugin's preferences/ directory). Reviewer agents get one file each;
-# creator agents in the paper-extension plugin get multiple (writing +
-# structure, plus presentation-style for the presentation-builder).
+# paper-pipeline creator agents get multiple (writing + structure, plus
+# presentation-style for the presentation-builder).
 AGENT_PREFS: dict[str, list[str]] = {
-    # deep-review reviewers
+    # reviewers
     "writing-reviewer":      ["writing-style.md"],
     "structure-reviewer":    ["structure-style.md"],
     "math-reviewer":         ["math-style.md"],
@@ -35,7 +35,7 @@ AGENT_PREFS: dict[str, list[str]] = {
     "simplicity-reviewer":   ["simplicity-style.md"],
     "code-reviewer":         ["code-style.md"],
     "adversarial-reviewer":  ["adversarial-style.md"],
-    # paper-extension creators
+    # paper-pipeline creators
     "paper-summarizer":      ["writing-style.md", "structure-style.md"],
     "extension-proposer":    ["writing-style.md", "structure-style.md"],
     "presentation-builder":  ["writing-style.md", "structure-style.md", "presentation-style.md"],
@@ -110,7 +110,7 @@ def main() -> None:
             "hookEventName": "PreToolUse",
             "permissionDecision": "allow",
             "permissionDecisionReason": (
-                f"Injected preferences for {subagent_type} from deep-review"
+                f"Injected preferences for {subagent_type} from CASM-tools"
             ),
             "updatedInput": updated_input,
         }
