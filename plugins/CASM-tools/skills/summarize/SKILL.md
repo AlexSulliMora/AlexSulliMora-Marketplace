@@ -1,19 +1,19 @@
 ---
 name: summarize
-description: This skill should be used when the user asks to "summarize a paper", "read and summarize", "summarize this PDF", "analyze this paper", "what does this paper say", "break down this paper", or provides a PDF path and wants a structured summary. It reads an academic economics paper, produces a structured draft via the paper-summarizer agent, and then hands the draft to /deep-review:review-document for the creator/reviewer quality loop.
+description: This skill should be used when the user asks to "summarize a paper", "read and summarize", "summarize this PDF", "analyze this paper", "what does this paper say", "break down this paper", or provides a PDF path and wants a structured summary. It reads an academic economics paper, produces a structured draft via the paper-summarizer agent, and then hands the draft to /CASM-tools:review-document for the creator/reviewer quality loop.
 argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 
 # Summarize Paper
 
-Read an academic paper from a PDF and produce a structured summary. The initial draft comes from the `paper-summarizer` agent; the quality loop is delegated to the `/deep-review:review-document` cascade.
+Read an academic paper from a PDF and produce a structured summary. The initial draft comes from the `paper-summarizer` agent; the quality loop is delegated to the `/CASM-tools:review-document` cascade.
 
-## Preference injection (automatic via deep-review hook)
+## Preference injection (automatic via preference-injection hook)
 
-The deep-review plugin registers a `PreToolUse` hook that intercepts Agent dispatches to known creator agents (`paper-summarizer`, `extension-proposer`, `presentation-builder`) and prepends the relevant style preferences from `~/.claude/plugins/.../deep-review/preferences/` to the dispatch prompt. `paper-summarizer` receives `writing-style.md` + `structure-style.md` automatically, so the creator drafts against the same rules the review cascade scores against.
+The CASM-tools plugin registers a `PreToolUse` hook that intercepts Agent dispatches to known creator agents (`paper-summarizer`, `extension-proposer`, `presentation-builder`) and prepends the relevant style preferences from `${CLAUDE_PLUGIN_ROOT}/preferences/` to the dispatch prompt. `paper-summarizer` receives `writing-style.md` + `structure-style.md` automatically, so the creator drafts against the same rules the review cascade scores against.
 
-Dispatch the creator normally — the hook does the rest. The creator agent's body also carries a fallback "read preferences file directly if not injected" pointer for the case where deep-review is not installed or the hook is disabled.
+Dispatch the creator normally — the hook does the rest. The creator agent's body also carries a fallback "read preferences file directly if not injected" pointer for the case where the hook is disabled.
 
 ## Prerequisites
 
@@ -22,12 +22,12 @@ Dispatch the creator normally — the hook does the rest. The creator agent's bo
 
 ## Session Logging
 
-Maintain a lightweight session log for pipeline-level tracking (not iteration-level — that's what `/deep-review:review-document` logs):
+Maintain a lightweight session log for pipeline-level tracking (not iteration-level — that's what `/CASM-tools:review-document` logs):
 
-1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_summarize.md` using the template from `~/.claude/plugins/deep-review/scripts/session-log-template.md`.
+1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_summarize.md` using the template from `${CLAUDE_PLUGIN_ROOT}/scripts/session-log-template.md`.
 2. **After preprocess**: Record outcome (cache-hit / regenerated / fallback).
 3. **After initial draft**: Record that the paper-summarizer produced v0.
-4. **After /deep-review:review-document returns**: Record final scores, iteration count, user checkpoint decision, cascade logs path.
+4. **After /CASM-tools:review-document returns**: Record final scores, iteration count, user checkpoint decision, cascade logs path.
 5. **At end**: Update Status to COMPLETED or FAILED.
 
 ## Process
@@ -46,7 +46,7 @@ If `paper-extension/summary.md` already exists, confirm with the user before ove
 
 ### 2. Preprocess paper (auto)
 
-Invoke the `paper-extension:preprocess` skill via the Skill tool, passing the absolute PDF path. Idempotent — short-circuits on a fresh cache. Proceed regardless of outcome.
+Invoke the `CASM-tools:preprocess` skill via the Skill tool, passing the absolute PDF path. Idempotent — short-circuits on a fresh cache. Proceed regardless of outcome.
 
 ### 3. Initial draft from paper-summarizer
 
@@ -56,13 +56,13 @@ Dispatch the `paper-summarizer` agent via the Agent tool. Include in the dispatc
 - The `paper-extension/paper.md` path (if it exists) as the preferred source
 - Instruction to write the draft directly to `paper-extension/summary.md`
 
-The deep-review hook injects `writing-style.md` and `structure-style.md` preferences into the dispatch prompt automatically.
+The preference-injection hook injects `writing-style.md` and `structure-style.md` preferences into the dispatch prompt automatically.
 
-The paper-summarizer writes v0 of the summary to the canonical live location. `/deep-review:review-document` will snapshot this as its v1 baseline.
+The paper-summarizer writes v0 of the summary to the canonical live location. `/CASM-tools:review-document` will snapshot this as its v1 baseline.
 
-### 4. Hand off to /deep-review:review-document
+### 4. Hand off to /CASM-tools:review-document
 
-Invoke the `deep-review:review-document` skill via the Skill tool with scope `all` on `paper-extension/summary.md`:
+Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/summary.md`:
 
 ```
 args: "all paper-extension/summary.md"

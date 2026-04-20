@@ -11,9 +11,9 @@ Read accumulated paper-extensions session logs and mirrored scorecards across pa
 
 ## Hard constraints (non-negotiable)
 
-> **NEVER write to any file under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/`, `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/`, or any `paper-extension/` per-paper directory.**
+> **NEVER write to any file under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/` or any `paper-extension/` per-paper directory.**
 >
-> All outputs go under `~/.paper-extensions-meta/`. Live plugins are read-only — you read current files only to copy them as starting points for proposed replacements. Per-paper directories are read-only — you read their session logs and mirrored scorecards only as input data.
+> All outputs go under `~/.paper-extensions-meta/`. The live plugin is read-only — you read current files only to copy them as starting points for proposed replacements. Per-paper directories are read-only — you read their session logs and mirrored scorecards only as input data.
 >
 > The user must always be able to diff your proposals against live files and decide what to apply manually.
 
@@ -21,22 +21,24 @@ If you ever find yourself about to write to a path that does not begin with `~/.
 
 ## Scope of proposed changes
 
-Proposals may touch:
+All live files are in one plugin. Proposals may touch any of these, but still flag the blast radius because the review cascade is used outside the paper pipeline too.
 
-- **Paper-extension plugin — creator agents** (paper-only scope):
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/paper-summarizer.md`
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/extension-proposer.md`
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/presentation-builder.md`
-- **Paper-extension plugin — skills** (paper-only scope):
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/skills/{preprocess,summarize,extend,present,run,meta-review}/SKILL.md`
-- **Deep-review plugin — preferences** (shared scope — affects every `/deep-review:review-document` invocation):
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/{writing,structure,math,factual,consistency,presentation,simplicity,code,adversarial}-style.md`
-- **Deep-review plugin — reviewer agents** (shared scope):
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/agents/*-reviewer.md`
-- **Deep-review plugin — shared scripts** (shared scope):
-  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/scripts/{reviewer-common,orchestrate-review,reviewer-tiers,loop-engine}.md`
+Paths below are all under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/` — abbreviated `<plugin>/` in the rest of this file.
 
-When proposing shared-scope changes, flag them explicitly — they affect every `/deep-review:review-document` invocation, not just paper work. Grad students typically want to adjust shared preferences files to match their stack/field.
+- **Paper-pipeline creators** (paper-only — affects summarize / extend / present):
+  - `<plugin>/agents/paper-summarizer.md`
+  - `<plugin>/agents/extension-proposer.md`
+  - `<plugin>/agents/presentation-builder.md`
+- **Paper-pipeline skills** (paper-only):
+  - `<plugin>/skills/{preprocess,summarize,extend,present,run,meta-review}/SKILL.md`
+- **Preferences** (shared — affects every `/CASM-tools:review-document` invocation):
+  - `<plugin>/preferences/{writing,structure,math,factual,consistency,presentation,simplicity,code,adversarial}-style.md`
+- **Reviewer agents** (shared):
+  - `<plugin>/agents/*-reviewer.md`
+- **Shared scripts** (shared):
+  - `<plugin>/scripts/{reviewer-common,orchestrate-review,reviewer-tiers,loop-engine}.md`
+
+When proposing shared-scope changes, flag them explicitly — they affect every `/CASM-tools:review-document` invocation, not just paper work.
 
 ## When to run
 
@@ -44,8 +46,8 @@ User-invoked. Typical triggers:
 
 - "Meta-review my recent paper runs"
 - "What patterns are showing up across my paper extensions?"
-- `/paper-extension:meta-review`
-- `/paper-extension:meta-review /home/user/research/papers/`
+- `/CASM-tools:meta-review`
+- `/CASM-tools:meta-review /home/user/research/papers/`
 
 ## Process
 
@@ -150,35 +152,34 @@ For each cluster, one entry:
 
 Order by frequency (highest first), then by severity (CRITICAL recurrence first within the same frequency tier). Prefix shared-scope titles with `[SHARED]`.
 
-**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/<style>.md` — those are the tuning knobs by design.
+**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/<style>.md` — those are the tuning knobs by design.
 
 ### 6. Generate proposed replacement files
 
 For each proposal whose `Touches` list includes specific files, **copy the live file as a starting point and edit the copy**. Never edit the live file.
 
 ```bash
-cp "${HOME}/.claude/plugins/deep-review/preferences/writing-style.md" \
-   "${HOME}/.paper-extensions-meta/${TIMESTAMP}/preferences/writing-style.md"
+cp "${HOME}/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md" \
+   "${HOME}/.paper-extensions-meta/${TIMESTAMP}/CASM-tools/preferences/writing-style.md"
 ```
 
 Then edit the copy. Each output is a **full standalone replacement** — the user diffs:
 
 ```bash
-diff ~/.paper-extensions-meta/.../preferences/writing-style.md ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md
+diff ~/.paper-extensions-meta/.../CASM-tools/preferences/writing-style.md \
+     ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md
 ```
 
-Mirror the live layout:
+Mirror the live layout under a single `CASM-tools/` subdir:
 
 ```
 ~/.paper-extensions-meta/YYYY-MM-DD-HHMMSS/
 ├── input-manifest.md
 ├── proposals.md
-├── deep-review/
-│   ├── preferences/         # proposed preference-file changes (most common)
-│   ├── agents/              # proposed reviewer changes
-│   └── scripts/             # proposed shared-script changes
-└── paper-extension/
-    ├── agents/              # proposed creator changes
+└── CASM-tools/
+    ├── preferences/         # proposed preference-file changes (most common)
+    ├── agents/              # proposed reviewer and creator changes
+    ├── scripts/             # proposed shared-script changes
     └── skills/              # proposed skill changes
 ```
 
@@ -198,14 +199,14 @@ Top clusters:
   3. [Cluster description] — [confidence] — [scope]
 
 Proposed file changes: M ([K] paper-only, [J] shared)
-  - deep-review/preferences/writing-style.md (shared)
-  - paper-extension/agents/paper-summarizer.md (paper-only)
+  - CASM-tools/preferences/writing-style.md (shared)
+  - CASM-tools/agents/paper-summarizer.md (paper-only)
   - ...
 
 Next steps:
   1. Read proposals.md for full analysis.
   2. Diff each proposed file against the live one.
-  3. Apply manually. Shared-scope changes affect every /deep-review:review-document, not just paper work.
+  3. Apply manually. Shared-scope changes affect every /CASM-tools:review-document, not just paper work.
 ```
 
 Stop. Do not offer to apply — the user applies.
@@ -216,8 +217,7 @@ Stop. Do not offer to apply — the user applies.
 ~/.paper-extensions-meta/YYYY-MM-DD-HHMMSS/
 ├── input-manifest.md
 ├── proposals.md
-├── deep-review/            # only if shared-scope proposals exist
-└── paper-extension/        # only if paper-only proposals exist
+└── CASM-tools/             # only if any proposals exist (preferences/, agents/, scripts/, skills/)
 ```
 
 ## What this skill does NOT do

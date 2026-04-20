@@ -17,8 +17,8 @@ Convert the paper PDF to markdown so downstream agents read a pre-parsed text ca
 
 ## When to run
 
-- **Manually** via `/paper-extension:preprocess <path-to-paper.pdf>`
-- **Automatically** at the start of `/paper-extension:summarize`, `/paper-extension:extend`, `/paper-extension:present`, and `/paper-extension:run`. Each of those skills invokes preprocess when `paper.md` does not exist or its `source_sha256` frontmatter does not match the current PDF's checksum.
+- **Manually** via `/CASM-tools:preprocess <path-to-paper.pdf>`
+- **Automatically** at the start of `/CASM-tools:summarize`, `/CASM-tools:extend`, `/CASM-tools:present`, and `/CASM-tools:run`. Each of those skills invokes preprocess when `paper.md` does not exist or its `source_sha256` frontmatter does not match the current PDF's checksum.
 
 Users do not normally invoke this skill directly — the other pipeline stages do it for them.
 
@@ -116,7 +116,7 @@ echo "Warning: preprocess output failed sanity check. Removed paper.md; agents w
 
 ### 7. Session log
 
-Create `paper-extension/session-logs/YYYY-MM-DD_preprocess.md` from `~/.claude/plugins/deep-review/scripts/session-log-template.md`. Record source PDF path and SHA256, output line/char count, image count, sanity-check warnings, and marker run duration.
+Create `paper-extension/session-logs/YYYY-MM-DD_preprocess.md` from `${CLAUDE_PLUGIN_ROOT}/scripts/session-log-template.md`. Record source PDF path and SHA256, output line/char count, image count, sanity-check warnings, and marker run duration.
 
 ## Output
 

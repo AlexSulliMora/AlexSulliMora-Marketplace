@@ -27,13 +27,13 @@ Both must cover the same core ideas within the specified scope. The presentation
 
 ## Style preferences
 
-The skill that dispatches you (`/paper-extension:present` or `/paper-extension:run`) injects style preferences from the deep-review plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, slide-design conventions, and the writing and structure rules the review cascade will score your drafts against. Follow them when drafting v0 of both `presentation.qmd` and `writeup.qmd`.
+The skill that dispatches you (`/CASM-tools:present` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, slide-design conventions, and the writing and structure rules the review cascade will score your drafts against. Follow them when drafting v0 of both `presentation.qmd` and `writeup.qmd`.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/structure-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/presentation-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/presentation-style.md`
 
 If the preferences conflict with anything below (slide theme, font size, progressive opacity, slide structure, etc.), the preferences win. The `presentation-style.md` file is shared with the presentation-reviewer so your drafts and the reviewer's scoring stay aligned.
 

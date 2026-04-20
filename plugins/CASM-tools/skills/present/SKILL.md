@@ -1,17 +1,17 @@
 ---
 name: present
-description: This skill creates a slide presentation and a companion writeup from a summarized/extended paper. Supports scope options ("summary only" for paper summary, "extension only" for extension deep-dive) and output formats (revealjs HTML default, ppt, pdf). Triggers on "create a presentation", "build slides", "present this paper", "/paper-extension:present summary only", "/paper-extension:present extension only", "/paper-extension:present ppt", "/paper-extension:present pdf".
+description: This skill creates a slide presentation and a companion writeup from a summarized/extended paper. Supports scope options ("summary only" for paper summary, "extension only" for extension deep-dive) and output formats (revealjs HTML default, ppt, pdf). Triggers on "create a presentation", "build slides", "present this paper", "/CASM-tools:present summary only", "/CASM-tools:present extension only", "/CASM-tools:present ppt", "/CASM-tools:present pdf".
 argument-hint: "<path-to-paper.pdf> [summary only | extension only] [ppt | pdf]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 
 # Present Paper
 
-Create a slide presentation and manuscript writeup from a finalized summary and extensions document. The initial drafts come from the `presentation-builder` agent; the quality loop is delegated to `/deep-review:review-document`.
+Create a slide presentation and manuscript writeup from a finalized summary and extensions document. The initial drafts come from the `presentation-builder` agent; the quality loop is delegated to `/CASM-tools:review-document`.
 
-## Preference injection (automatic via deep-review hook)
+## Preference injection (automatic via preference-injection hook)
 
-The deep-review plugin's `PreToolUse` hook intercepts the `presentation-builder` dispatch and prepends `writing-style.md` + `structure-style.md` + `presentation-style.md` to the prompt. The `presentation-style.md` file is shared with the presentation-reviewer, so builder output and reviewer scoring stay aligned. Dispatch the creator normally — the hook does the rest.
+The CASM-tools plugin's `PreToolUse` hook intercepts the `presentation-builder` dispatch and prepends `writing-style.md` + `structure-style.md` + `presentation-style.md` to the prompt. The `presentation-style.md` file is shared with the presentation-reviewer, so builder output and reviewer scoring stay aligned. Dispatch the creator normally — the hook does the rest.
 
 The post-cascade screenshot-based presentation-review pass (step 6 below) also receives its preferences via the hook.
 
@@ -35,10 +35,10 @@ Parse (case-insensitive):
 
 ## Session Logging
 
-1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_present.md` using `~/.claude/plugins/deep-review/scripts/session-log-template.md`. Record objective, scope, format, paper details.
+1. **At start**: Create `paper-extension/session-logs/YYYY-MM-DD_present.md` using `${CLAUDE_PLUGIN_ROOT}/scripts/session-log-template.md`. Record objective, scope, format, paper details.
 2. **After preprocess**: Record outcome.
 3. **After initial draft + compile + screenshot**: Record both `.qmd` files produced and compiled, screenshot count.
-4. **After /deep-review:review-document returns**: Record final scores, iteration count, checkpoint decision, cascade logs path.
+4. **After /CASM-tools:review-document returns**: Record final scores, iteration count, checkpoint decision, cascade logs path.
 5. **After post-cascade screenshot review (if run)**: Record outcome.
 6. **At end**: Update Status.
 
@@ -54,7 +54,7 @@ paper-extension/writeup-logs/
 
 ### 2. Preprocess paper (auto)
 
-Invoke `paper-extension:preprocess` via the Skill tool.
+Invoke `CASM-tools:preprocess` via the Skill tool.
 
 ### 3. Initial drafts from presentation-builder
 
@@ -67,7 +67,7 @@ Dispatch the `presentation-builder` agent via the Agent tool. Include:
 - The **format** option (revealjs / pptx / beamer)
 - Instruction to write drafts to `paper-extension/presentation.qmd` and `paper-extension/writeup.qmd`
 
-The deep-review hook injects writing + structure + presentation preferences into the dispatch prompt automatically.
+The preference-injection hook injects writing + structure + presentation preferences into the dispatch prompt automatically.
 
 ### 4. Compile and render screenshots
 
@@ -99,16 +99,16 @@ If compilation fails, surface the error, have the builder fix the source, recomp
 Render per-slide screenshots:
 
 ```bash
-bash ~/.claude/plugins/.../AlexSulliMora-Marketplace/plugins/deep-review/scripts/render-slides-to-png.sh \
+bash ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/scripts/render-slides-to-png.sh \
     paper-extension/presentation.[html|pptx|pdf] \
     paper-extension/presentation-logs/screenshots/current
 ```
 
-The script lives in the deep-review plugin (it's reviewer infrastructure, used by presentation-reviewer to rasterize slides for visual review). The exact absolute path depends on where the marketplace is installed — resolve it from the marketplace root, typically `~/research/AlexSulliMora-Marketplace/plugins/deep-review/scripts/render-slides-to-png.sh` for a local install, or the path Claude Code reports when `/plugin info deep-review@AlexSulliMora-Marketplace` is run. Once resolved, use the absolute path.
+The script lives in this plugin (it's reviewer infrastructure, used by presentation-reviewer to rasterize slides for visual review). The exact absolute path depends on where the marketplace is installed — resolve it from `/plugin info CASM-tools@AlexSulliMora-Marketplace` if the path above is wrong.
 
-### 5. Hand off to /deep-review:review-document
+### 5. Hand off to /CASM-tools:review-document
 
-Invoke `deep-review:review-document` via the Skill tool with scope `all` on both artifacts:
+Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on both artifacts:
 
 ```
 args: "all paper-extension/presentation.qmd paper-extension/writeup.qmd"
@@ -122,7 +122,7 @@ When the cascade's main session writes a revision, recompile and re-render scree
 
 ### 6. Screenshot-based presentation review (post-cascade)
 
-After `/deep-review:review-document` returns with an accepted version, dispatch `presentation-reviewer` manually via the Agent tool with the screenshot directory explicitly in the prompt. The deep-review hook injects `presentation-style.md` preferences automatically; you only need to provide inputs and task in the prompt.
+After `/CASM-tools:review-document` returns with an accepted version, dispatch `presentation-reviewer` manually via the Agent tool with the screenshot directory explicitly in the prompt. The preference-injection hook injects `presentation-style.md` preferences automatically; you only need to provide inputs and task in the prompt.
 
 ```
 Agent(

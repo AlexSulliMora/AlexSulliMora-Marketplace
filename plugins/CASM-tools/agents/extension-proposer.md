@@ -32,12 +32,12 @@ Given a paper summary (and access to the original PDF), propose meaningful resea
 
 ## Style preferences
 
-The skill that dispatches you (`/paper-extension:extend` or `/paper-extension:run`) injects style preferences from the deep-review plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
+The skill that dispatches you (`/CASM-tools:extend` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/structure-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
+- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
 
 If the preferences conflict with anything below, the preferences win.
 

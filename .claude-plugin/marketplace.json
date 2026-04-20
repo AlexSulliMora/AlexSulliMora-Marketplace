@@ -4,17 +4,12 @@
     "name": "Alex Sullivan",
     "email": "sullivancas@gmail.com"
   },
-  "description": "Personal plugin marketplace. Ships the deep-review cascade and the paper-extension academic-paper pipeline, with shared style preferences.",
+  "description": "Personal Claude Code plugin marketplace. Ships CASM-tools: the review cascade plus an academic-paper pipeline that uses it.",
   "plugins": [
     {
-      "name": "deep-review",
-      "source": "./plugins/deep-review",
-      "description": "Tiered creator/reviewer cascade for thorough multi-axis review of drafts, code, and documents. Provides /deep-review:review-document, the reviewer agents, shared scripts, and a preferences directory that controls scoring, severity calibration, and style rules."
-    },
-    {
-      "name": "paper-extension",
-      "source": "./plugins/paper-extension",
-      "description": "Analyze academic economics papers and propose research extensions with structured creator/reviewer workflows. Depends on deep-review for the review cascade and the preferences files."
+      "name": "CASM-tools",
+      "source": "./plugins/CASM-tools",
+      "description": "Tiered creator/reviewer review cascade (/CASM-tools:review-document) with nine reviewer agents, shared preferences for scoring and style, and an academic-paper pipeline (summarize, extend, present) that uses the same cascade for its internal quality loops."
     }
   ]
 }

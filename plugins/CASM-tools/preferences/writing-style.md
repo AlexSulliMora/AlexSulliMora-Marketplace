@@ -1,6 +1,6 @@
 # Writing Style Preferences
 
-Scoring weights, severity calibration, and style rules for the writing-reviewer. Edit this file to tune the reviewer's behavior — changes apply on the next /deep-review:review-document invocation.
+Scoring weights, severity calibration, and style rules for the writing-reviewer. Edit this file to tune the reviewer's behavior — changes apply on the next /CASM-tools:review-document invocation.
 
 ## Scoring weights
 
