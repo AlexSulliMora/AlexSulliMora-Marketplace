@@ -1,7 +1,7 @@
 ---
 name: summarize
 description: This skill should be used when the user asks to "summarize a paper", "read and summarize", "summarize this PDF", "analyze this paper", "what does this paper say", "break down this paper", or provides a PDF path and wants a structured summary. It reads an academic economics paper, produces a structured draft via the paper-summarizer agent, and then hands the draft to /deep-review:review-document for the creator/reviewer quality loop.
-argument-hint: <path-to-paper.pdf>
+argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 

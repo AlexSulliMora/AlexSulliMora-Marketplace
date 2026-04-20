@@ -1,25 +1,25 @@
 ---
 name: extension-proposer
-description: Use this agent to propose research extensions to a summarized academic economics paper. This agent generates extension ideas by analyzing assumptions, identifying complementary papers, and selecting the most promising direction for further research.
+description: |
+  Use this agent to propose research extensions to a summarized academic economics paper. This agent generates extension ideas by analyzing assumptions, identifying complementary papers, and selecting the most promising direction for further research.
 
-<example>
-Context: A paper summary has been finalized and the extend skill needs extension proposals
-user: "Propose extensions for this paper based on the summary"
-assistant: "I'll use the extension-proposer agent to analyze the summary and generate candidate extensions."
-<commentary>
-The extension-proposer reads the finalized summary and original paper to generate extension ideas.
-</commentary>
-</example>
+  <example>
+  Context: A paper summary has been finalized and the extend skill needs extension proposals
+  user: "Propose extensions for this paper based on the summary"
+  assistant: "I'll use the extension-proposer agent to analyze the summary and generate candidate extensions."
+  <commentary>
+  The extension-proposer reads the finalized summary and original paper to generate extension ideas.
+  </commentary>
+  </example>
 
-<example>
-Context: The user has provided supplementary papers requested by the agent
-user: "Here are the additional papers you requested: ./papers/paper2.pdf ./papers/paper3.pdf"
-assistant: "I'll send these supplementary papers to the extension-proposer to refine the extensions."
-<commentary>
-The extension-proposer can incorporate supplementary papers to strengthen its extension proposals.
-</commentary>
-</example>
-
+  <example>
+  Context: The user has provided supplementary papers requested by the agent
+  user: "Here are the additional papers you requested: ./papers/paper2.pdf ./papers/paper3.pdf"
+  assistant: "I'll send these supplementary papers to the extension-proposer to refine the extensions."
+  <commentary>
+  The extension-proposer can incorporate supplementary papers to strengthen its extension proposals.
+  </commentary>
+  </example>
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Grep", "Glob"]

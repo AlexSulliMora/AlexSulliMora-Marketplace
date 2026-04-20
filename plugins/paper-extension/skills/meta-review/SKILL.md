@@ -1,7 +1,7 @@
 ---
 name: meta-review
 description: This skill should be used when the user asks to "meta-review", "review past paper runs", "improve the paper agents", "what patterns are showing up across my papers", or wants to learn from accumulated paper-extension runs. It reads session logs and mirrored scorecards across past papers, identifies recurring failure patterns, and writes proposed agent and skill updates to ~/.paper-extensions-meta/ — never modifying live files or any per-paper directory.
-argument-hint: [optional-paper-extension-paths-or-roots]
+argument-hint: "[optional-paper-extension-paths-or-roots]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 

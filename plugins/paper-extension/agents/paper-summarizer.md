@@ -1,25 +1,25 @@
 ---
 name: paper-summarizer
-description: Use this agent to read and summarize an academic economics paper from a PDF file. This agent produces structured summaries covering literature contribution, model setup, data, identification, results, assumptions, and criticisms.
+description: |
+  Use this agent to read and summarize an academic economics paper from a PDF file. This agent produces structured summaries covering literature contribution, model setup, data, identification, results, assumptions, and criticisms.
 
-<example>
-Context: User has provided a PDF path and the summarize skill needs to create an initial summary draft
-user: "Summarize this paper: ./papers/acemoglu2001.pdf"
-assistant: "I'll use the paper-summarizer agent to read and produce a structured summary of the paper."
-<commentary>
-The paper-summarizer creates the initial draft summary that will then go through the reviewer loop.
-</commentary>
-</example>
+  <example>
+  Context: User has provided a PDF path and the summarize skill needs to create an initial summary draft
+  user: "Summarize this paper: ./papers/acemoglu2001.pdf"
+  assistant: "I'll use the paper-summarizer agent to read and produce a structured summary of the paper."
+  <commentary>
+  The paper-summarizer creates the initial draft summary that will then go through the reviewer loop.
+  </commentary>
+  </example>
 
-<example>
-Context: A previous summary draft was scored below 90 by reviewers and needs revision
-user: "Revise the summary based on this scorecard"
-assistant: "I'll send the scorecard back to the paper-summarizer agent to revise the summary."
-<commentary>
-The paper-summarizer also handles revisions when given a scorecard with specific required changes.
-</commentary>
-</example>
-
+  <example>
+  Context: A previous summary draft was scored below 90 by reviewers and needs revision
+  user: "Revise the summary based on this scorecard"
+  assistant: "I'll send the scorecard back to the paper-summarizer agent to revise the summary."
+  <commentary>
+  The paper-summarizer also handles revisions when given a scorecard with specific required changes.
+  </commentary>
+  </example>
 model: inherit
 color: green
 tools: ["Read", "Write", "Grep", "Glob"]

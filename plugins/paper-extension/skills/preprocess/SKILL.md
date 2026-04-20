@@ -1,7 +1,7 @@
 ---
 name: preprocess
 description: This skill converts an academic paper PDF into a markdown cache (paper.md) using marker-pdf so downstream agents can prefer a pre-parsed text cache over re-reading the PDF on every iteration. Triggers on "preprocess paper", "convert paper to markdown", and is invoked automatically at the start of summarize, extend, present, and run whenever paper.md does not exist or is stale relative to the source PDF.
-argument-hint: <path-to-paper.pdf>
+argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: run
 description: This skill should be used when the user asks to "run the full paper pipeline", "analyze and extend this paper", "do everything for this paper", or wants to execute all three stages (summarize, extend, present) end-to-end on an academic paper PDF with minimal manual intervention.
-argument-hint: <path-to-paper.pdf> [summary only | extension only] [ppt | pdf]
+argument-hint: "<path-to-paper.pdf> [summary only | extension only] [ppt | pdf]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 

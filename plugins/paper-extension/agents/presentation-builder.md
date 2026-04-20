@@ -1,16 +1,16 @@
 ---
 name: presentation-builder
-description: Use this agent to create both a slide presentation and a Quarto manuscript writeup from a paper summary and extension proposals. Supports scope modes (full, summary only, extension only) and output formats (revealjs, pptx, beamer). This agent produces complementary outputs — the presentation for visual delivery, the writeup for detailed reference.
+description: |
+  Use this agent to create both a slide presentation and a Quarto manuscript writeup from a paper summary and extension proposals. Supports scope modes (full, summary only, extension only) and output formats (revealjs, pptx, beamer). This agent produces complementary outputs — the presentation for visual delivery, the writeup for detailed reference.
 
-<example>
-Context: Summary and extensions have been finalized, and the present skill needs presentation/writeup drafts
-user: "Build the presentation and writeup from these materials"
-assistant: "I'll use the presentation-builder agent to create both the Revealjs slides and the manuscript writeup."
-<commentary>
-The presentation-builder creates both outputs together to ensure consistency.
-</commentary>
-</example>
-
+  <example>
+  Context: Summary and extensions have been finalized, and the present skill needs presentation/writeup drafts
+  user: "Build the presentation and writeup from these materials"
+  assistant: "I'll use the presentation-builder agent to create both the Revealjs slides and the manuscript writeup."
+  <commentary>
+  The presentation-builder creates both outputs together to ensure consistency.
+  </commentary>
+  </example>
 model: inherit
 color: magenta
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]

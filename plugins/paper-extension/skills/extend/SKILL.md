@@ -1,7 +1,7 @@
 ---
 name: extend
 description: This skill should be used when the user asks to "extend this paper", "propose extensions", "suggest research extensions", "what extensions could be made", or wants ideas for extending a summarized paper. It generates research extension proposals via the extension-proposer agent, then hands the draft to /deep-review:review-document for the creator/reviewer quality loop.
-argument-hint: <path-to-paper.pdf>
+argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 

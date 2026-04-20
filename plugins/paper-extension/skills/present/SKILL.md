@@ -1,7 +1,7 @@
 ---
 name: present
 description: This skill creates a slide presentation and a companion writeup from a summarized/extended paper. Supports scope options ("summary only" for paper summary, "extension only" for extension deep-dive) and output formats (revealjs HTML default, ppt, pdf). Triggers on "create a presentation", "build slides", "present this paper", "/paper-extension:present summary only", "/paper-extension:present extension only", "/paper-extension:present ppt", "/paper-extension:present pdf".
-argument-hint: <path-to-paper.pdf> [summary only | extension only] [ppt | pdf]
+argument-hint: "<path-to-paper.pdf> [summary only | extension only] [ppt | pdf]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
 
