@@ -11,7 +11,7 @@ Read accumulated paper-extensions session logs and mirrored scorecards across pa
 
 ## Hard constraints (non-negotiable)
 
-> **NEVER write to any file under `~/.claude/plugins/paper-extension/`, `~/.claude/plugins/deep-review/`, or any `paper-extension/` per-paper directory.**
+> **NEVER write to any file under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/`, `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/`, or any `paper-extension/` per-paper directory.**
 >
 > All outputs go under `~/.paper-extensions-meta/`. Live plugins are read-only — you read current files only to copy them as starting points for proposed replacements. Per-paper directories are read-only — you read their session logs and mirrored scorecards only as input data.
 >
@@ -24,17 +24,17 @@ If you ever find yourself about to write to a path that does not begin with `~/.
 Proposals may touch:
 
 - **Paper-extension plugin — creator agents** (paper-only scope):
-  - `~/.claude/plugins/paper-extension/agents/paper-summarizer.md`
-  - `~/.claude/plugins/paper-extension/agents/extension-proposer.md`
-  - `~/.claude/plugins/paper-extension/agents/presentation-builder.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/paper-summarizer.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/extension-proposer.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/agents/presentation-builder.md`
 - **Paper-extension plugin — skills** (paper-only scope):
-  - `~/.claude/plugins/paper-extension/skills/{preprocess,summarize,extend,present,run,meta-review}/SKILL.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/paper-extension/skills/{preprocess,summarize,extend,present,run,meta-review}/SKILL.md`
 - **Deep-review plugin — preferences** (shared scope — affects every `/deep-review:review-document` invocation):
-  - `~/.claude/plugins/deep-review/preferences/{writing,structure,math,factual,consistency,presentation,simplicity,code,adversarial}-style.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/{writing,structure,math,factual,consistency,presentation,simplicity,code,adversarial}-style.md`
 - **Deep-review plugin — reviewer agents** (shared scope):
-  - `~/.claude/plugins/deep-review/agents/*-reviewer.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/agents/*-reviewer.md`
 - **Deep-review plugin — shared scripts** (shared scope):
-  - `~/.claude/plugins/deep-review/scripts/{reviewer-common,orchestrate-review,reviewer-tiers,loop-engine}.md`
+  - `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/scripts/{reviewer-common,orchestrate-review,reviewer-tiers,loop-engine}.md`
 
 When proposing shared-scope changes, flag them explicitly — they affect every `/deep-review:review-document` invocation, not just paper work. Grad students typically want to adjust shared preferences files to match their stack/field.
 
@@ -150,7 +150,7 @@ For each cluster, one entry:
 
 Order by frequency (highest first), then by severity (CRITICAL recurrence first within the same frequency tier). Prefix shared-scope titles with `[SHARED]`.
 
-**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `~/.claude/plugins/deep-review/preferences/<style>.md` — those are the tuning knobs by design.
+**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/<style>.md` — those are the tuning knobs by design.
 
 ### 6. Generate proposed replacement files
 
@@ -164,7 +164,7 @@ cp "${HOME}/.claude/plugins/deep-review/preferences/writing-style.md" \
 Then edit the copy. Each output is a **full standalone replacement** — the user diffs:
 
 ```bash
-diff ~/.paper-extensions-meta/.../preferences/writing-style.md ~/.claude/plugins/deep-review/preferences/writing-style.md
+diff ~/.paper-extensions-meta/.../preferences/writing-style.md ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/deep-review/preferences/writing-style.md
 ```
 
 Mirror the live layout:
