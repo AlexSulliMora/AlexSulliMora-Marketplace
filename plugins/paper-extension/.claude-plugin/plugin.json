@@ -1,0 +1,32 @@
+{
+  "name": "paper-extension",
+  "version": "0.3.0",
+  "description": "Analyze academic economics papers and propose research extensions with structured creator/reviewer workflows. Delegates review to the deep-review plugin's /deep-review:review-document cascade; ships creator agents, preprocessing, session logging, and the orchestrator skills.",
+  "author": {
+    "name": "sulli"
+  },
+  "keywords": ["economics", "research", "academic", "paper-analysis", "extensions"],
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script ${CLAUDE_PLUGIN_ROOT}/hooks/session-log-reminder.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --script ${CLAUDE_PLUGIN_ROOT}/hooks/verify-reminder.py"
+          }
+        ]
+      }
+    ]
+  }
+}

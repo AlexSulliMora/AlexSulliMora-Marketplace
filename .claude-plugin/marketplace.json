@@ -1,0 +1,20 @@
+{
+  "name": "AlexSulliMora-Marketplace",
+  "owner": {
+    "name": "Alex Sullivan",
+    "email": "sullivancas@gmail.com"
+  },
+  "description": "Personal plugin marketplace. Ships the deep-review cascade and the paper-extension academic-paper pipeline, with shared style preferences.",
+  "plugins": [
+    {
+      "name": "deep-review",
+      "source": "./plugins/deep-review",
+      "description": "Tiered creator/reviewer cascade for thorough multi-axis review of drafts, code, and documents. Provides /deep-review:review-document, the reviewer agents, shared scripts, and a preferences directory that controls scoring, severity calibration, and style rules."
+    },
+    {
+      "name": "paper-extension",
+      "source": "./plugins/paper-extension",
+      "description": "Analyze academic economics papers and propose research extensions with structured creator/reviewer workflows. Depends on deep-review for the review cascade and the preferences files."
+    }
+  ]
+}
