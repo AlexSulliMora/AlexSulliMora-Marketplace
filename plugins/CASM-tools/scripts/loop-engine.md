@@ -11,6 +11,8 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 - `artifact_path` — absolute path to the live file under review.
 - `reviewer_list` — list of agent names to dispatch (e.g. `["writing-reviewer", "code-reviewer"]`).
 - `logs_dir` — path to the review logs directory. Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/` relative to the repo root, where time is 24-hour PST. May be overridden by the caller (e.g. the pipeline skills pass their own log folders via the `into <dir>` token). See `orchestrate-review.md` for the full naming rule.
+- `threshold` — integer in [0, 100]. Per-reviewer composite score required to pass. Default: `80`. Set via the `threshold <N>` scope token.
+- `max_iterations` — integer in [1, 10]. Maximum number of loop iterations before hitting the cap. Default: `3`. Set via the `iterations <N>` scope token.
 - `thorough` — boolean. When true, the engine runs a final parallel audit pass after the cascade finalizes, saving results to `logs_dir/thorough/` without applying any findings.
 - `session_id` — from hook context; recorded in the lock and session log.
 
@@ -40,7 +42,7 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 | Field | Purpose |
 |---|---|
 | `phase` | `loop` / `cleanup` / `thorough` / `finalize`. |
-| `iteration` | Current iteration (1..3). Only meaningful during the `loop` phase. |
+| `iteration` | Current iteration (1..`max_iterations`). Only meaningful during the `loop` phase. |
 | `version` | Monotonic snapshot version. `v1` is the baseline (live file at cascade start); every revision increments by 1. |
 | `current_snapshot_path` | `logs_dir/[artifact]-v[version].md`. Reviewers read this. |
 | `final_scorecard_path` | `logs_dir/reviewer-logs/iter[N]-merged.md` for the last iteration run. Input to the convergence-cleanup fixer dispatch. Set when the loop exits. |
@@ -72,7 +74,7 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 
 4. Reviewer loop:
      phase = loop
-     for iteration in 1..3:
+     for iteration in 1..max_iterations:
        a. If sha256(artifact_path) != live_file_hash:
             halt("live file edited externally during cascade. options: restart, continue from current snapshot, abort")
        b. Dispatch all reviewers in `reviewer_list` in parallel against `current_snapshot_path`.
@@ -81,13 +83,13 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
        c. Collect scorecards, validate, handle parse failures per Recovery actions.
        d. Merge → logs_dir/reviewer-logs/iter[iteration]-merged.md.
        e. Update session log.
-       f. If every reviewer in `reviewer_list` passes (composite ≥ 90 AND zero CRITICAL):
+       f. If every reviewer in `reviewer_list` passes (composite ≥ `threshold` AND zero CRITICAL):
             final_scorecard_path = logs_dir/reviewer-logs/iter[iteration]-merged.md
             break loop
-       g. If iteration == 3:
+       g. If iteration == max_iterations:
             final_scorecard_path = logs_dir/reviewer-logs/iter[iteration]-merged.md
             if any CRITICAL remains:
-              halt_cascade_and_checkpoint(reason="iteration 3 exhausted with CRITICAL items remaining")
+              halt_cascade_and_checkpoint(reason="iteration cap exhausted with CRITICAL items remaining")
             else:
               break loop  # MAJOR/MINOR handled by the cleanup step below
        h. Dispatch `fixer` agent to apply the iteration's merged scorecard:
@@ -138,8 +140,8 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
      e. return DONE.
 
 9. Cap exhaustion with CRITICAL remaining:
-      write logs_dir/REVIEW_SUSPENDED.md with full state (iteration, version, reviewer_list, thorough flag, logs_dir).
-      Escalate to the user with a blocking prompt: continue the halted loop, suspend, or fix manually. This is an error-path escalation, not a routine checkpoint — it only fires when a CRITICAL-severity item could not be driven to zero within the 3-iteration cap.
+      write logs_dir/REVIEW_SUSPENDED.md with full state (iteration, version, reviewer_list, threshold, max_iterations, thorough flag, logs_dir).
+      Escalate to the user with a blocking prompt: continue the halted loop, suspend, or fix manually. This is an error-path escalation, not a routine checkpoint — it only fires when a CRITICAL-severity item could not be driven to zero within the configured iteration cap.
       release_lock()
       On next `/review-document` invocation for this artifact, the skill detects the suspended file and auto-resumes.
 ```
@@ -175,7 +177,7 @@ There is no `mode` field. The fixer always applies every item in the scorecard e
 | Reviewer scorecard parse failure (second time) | Mark reviewer "failed to parse", exclude from iteration composite, flag to user, continue. |
 | Fixer returns empty/refusal | Retry once with refusal reason prepended. If still empty, surface to user and halt. |
 | Fixer writes to a path other than `target_path` | Treat the extra write as an error. Revert the extra write (from git or the pre-dispatch state) and halt. |
-| Iteration cap hit with CRITICAL remaining | Halt cascade, suspend or checkpoint. User decides whether to continue the halted loop, finalize anyway, or fix manually. |
+| Iteration cap hit with CRITICAL remaining | Halt cascade, suspend or checkpoint. User decides whether to continue the halted loop, finalize anyway, or fix manually. The cap is whatever `max_iterations` was set to (default 3). |
 | Old-schema `REVIEW_SUSPENDED.md` detected on resume (contains `tier` field from the prior tiered engine) | Halt with "suspended under old schema, delete REVIEW_SUSPENDED.md and restart." |
 | Loop crashes mid-iteration | Lockfile TTL is advisory (OS lock drops on process death). On next invocation, if lockfile exists but flock succeeds, treat as stale and resume from last saved state. |
 

@@ -54,12 +54,14 @@ When in doubt between CRITICAL and MAJOR, ask: "Would shipping this as-is mislea
 
 A stage passes when **both** of the following hold:
 
-1. The composite score for **this reviewer** is ≥ 90 (out of 100).
+1. The composite score for **this reviewer** is ≥ 80 (out of 100) — the default threshold.
 2. **Zero CRITICAL items** remain in your scorecard.
 
-If composite ≥ 90 but at least one CRITICAL item remains, the stage **fails** — the orchestrator will route the scorecard back to the main session for revision. Composite alone is not sufficient.
+If composite ≥ threshold but at least one CRITICAL item remains, the stage **fails** — the orchestrator will route the scorecard back to the main session for revision. Composite alone is not sufficient.
 
 The orchestrator combines per-reviewer pass/fail across all reviewers: the stage as a whole passes only when every reviewer passes individually. You only need to report your own pass/fail; the orchestrator handles aggregation.
+
+**Your scorecard's PASS/FAIL line is advisory.** The orchestrator makes the authoritative iteration-pass decision against the configured threshold, which the user may override per invocation via the `threshold <N>` scope token (default 80). When the user overrides the threshold, your scorecard's decorative PASS/FAIL line may disagree with the orchestrator's final decision — that is expected. Always report your composite score accurately; let the orchestrator apply the current threshold.
 
 ---
 
@@ -80,7 +82,7 @@ Use exactly this structure. Section headings and table formats are not negotiabl
 | [Category 1] | [score] | [brief note] |
 | [Category 2] | [score] | [brief note] |
 | ...
-| **Composite** | **[weighted average]** | **[PASS / FAIL — threshold: 90, zero CRITICAL]** |
+| **Composite** | **[weighted average]** | **[PASS / FAIL — threshold: 80, zero CRITICAL]** |
 
 ## Required Changes
 

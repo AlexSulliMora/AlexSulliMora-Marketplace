@@ -41,7 +41,7 @@ Every cascade writes into `[artifact-logs]/` with this structure:
 
 ## Loop Structure
 
-All selected reviewers run in parallel against the current snapshot each iteration. The orchestrator merges every reviewer's scorecard into a single aggregated list and dispatches the fixer once per iteration against that list. The loop terminates when every reviewer passes (composite ≥ 90 AND zero CRITICAL) or when iteration 3 completes. On convergence (or at the cap with no CRITICAL remaining), a final fixer pass applies any remaining MAJOR/MINOR items before finalization. No re-review follows the convergence cleanup.
+All selected reviewers run in parallel against the current snapshot each iteration. The orchestrator merges every reviewer's scorecard into a single aggregated list and dispatches the fixer once per iteration against that list. The loop terminates when every reviewer passes (composite ≥ `threshold` AND zero CRITICAL) or when the iteration cap is reached. The threshold and cap are configurable per invocation via the `threshold <N>` and `iterations <N>` scope tokens (defaults: threshold 80, iterations 3). On convergence (or at the cap with no CRITICAL remaining), a final fixer pass applies any remaining MAJOR/MINOR items before finalization. No re-review follows the convergence cleanup.
 
 **The cascade operates on snapshots in `[artifact-logs]`, not the live file.** The live file at the artifact path is copied once to `[artifact-logs]/[artifact]-v1.md` at loop start and is then read-only until the cascade finalizes. Every revision during the cascade writes a new versioned snapshot (`[artifact]-v2.md`, `v3.md`, ...); reviewers always read the latest snapshot.
 
@@ -52,14 +52,14 @@ All selected reviewers run in parallel against the current snapshot each iterati
 2. Skill resolves artifact(s), acquires lock at state/locks/<hash>.lock, resolves logs_dir
 3. Skill classifies reviewers from scope phrase or artifact type, announces selection
 4. Snapshot the live file to [artifact-logs]/[artifact]-v1.md (baseline). **v1 is write-once and immutable** — nothing in the cascade ever overwrites it, not even on resume from a suspended state. Live file is untouched until finalization.
-5. For iteration in 1..3:
+5. For iteration in 1..max_iterations (default 3):
      a. Dispatch all selected reviewers in parallel against the latest snapshot (each dispatch is a fresh Agent call, not a SendMessage to a reused reviewer — fresh dispatch avoids anchoring bias). Dispatch prompts contain only the snapshot path and scorecard output path; do not add preferences (the hook injects them automatically).
      b. Each reviewer produces a scorecard; save to [artifact-logs]/reviewer-logs/iter[N]-[reviewer].md
      c. Merge all scorecards → [artifact-logs]/reviewer-logs/iter[N]-merged.md
      d. Update session log with iteration scores and CRITICAL issues
-     e. If every reviewer passes (composite ≥ 90 AND zero CRITICAL):
+     e. If every reviewer passes (composite ≥ threshold [default 80] AND zero CRITICAL):
           break loop, go to step 6 (convergence cleanup)
-     f. If iteration == 3:
+     f. If iteration == max_iterations:
           If any CRITICAL remains: halt and escalate to user.
           Else: break loop (MAJOR/MINOR will be handled in step 6).
      g. Dispatch `fixer` agent to produce the next version → [artifact-logs]/[artifact]-v[next].md (scorecard_path = the iteration's merged scorecard)
@@ -170,12 +170,12 @@ At the end, concatenate every final scorecard into the combined scorecard at `[a
 
 Per-iteration pass/fail is the only evaluation during the loop:
 
-- **Iteration pass:** every reviewer in `reviewer_list` scores composite ≥ 90 AND zero CRITICAL items.
-- If any reviewer fails its threshold, the loop iterates again (up to 3 times) with a fixer dispatch between iterations.
+- **Iteration pass:** every reviewer in `reviewer_list` scores composite ≥ `threshold` (default 80) AND zero CRITICAL items.
+- If any reviewer fails the threshold, the loop iterates again (up to `max_iterations`, default 3) with a fixer dispatch between iterations.
 - The fixer receives the iteration's merged scorecard as `scorecard_path` for each in-loop revision.
 - CRITICAL severity items block loop advancement. A loop that hits its cap with CRITICAL remaining halts and escalates to the user.
 - MAJOR and MINOR items remaining at the end of the loop are cleaned up by one final fixer dispatch (scorecard_path = `final-cleanup-request.md`) before finalization. The cleanup pass is not re-reviewed — the finalized snapshot is whatever the convergence-cleanup fixer wrote.
-- 3-iteration cap. Thorough pass: 1 dispatch, no fixes.
+- Iteration cap of `max_iterations` (default 3). Thorough pass: 1 dispatch, no fixes.
 - On parse failure for a reviewer's scorecard: re-dispatch that reviewer once; if the second attempt also parses poorly, mark the reviewer `failed to parse`, exclude from the iteration composite, flag to user, continue.
 - On empty-or-refuse fixer output: retry once with the refusal reason prepended; if still empty, escalate to the user and halt the cascade.
 
@@ -211,7 +211,7 @@ The design principle: the fixer applies every item the reviewers flag. If the us
 
 **Installed version:** [artifact]-v[N].md (copied to [artifact_path])
 **Final file:** [artifact]-final.md
-**Cascade converged:** [YES / NO — if NO, note whether iteration 3 hit the cap]
+**Cascade converged:** [YES / NO — if NO, note whether the iteration cap was hit]
 **Logs directory:** [artifact-logs]/
 
 ### Cascade summary
@@ -242,7 +242,7 @@ cp [artifact-logs]/[artifact]-v3.md [artifact_path]
 ### Iteration accounting
 
 - Version numbering is monotonic across the whole cascade: `v1` is the baseline snapshot of the live file, `v2` is the first revision, and so on through loop iterations and the convergence cleanup. The thorough pass does NOT produce a new version (it reviews without revising).
-- 3-iteration cap on the main loop. Convergence cleanup: one dispatch.
+- Iteration cap on the main loop equals `max_iterations` (default 3). Convergence cleanup: one dispatch.
 - Session log records one entry per loop iteration, one entry for the convergence cleanup (if any), and one finalization entry per cascade.
 
 ## Session Log Updates
@@ -272,11 +272,11 @@ At cascade end, record one entry:
 
 ## Cap exhaustion (CRITICAL escalation)
 
-If iteration 3 completes with CRITICAL issues remaining:
+If the final iteration completes with CRITICAL issues remaining:
 
 1. Write `[artifact-logs]/REVIEW_SUSPENDED.md` capturing the full cascade state: last version, every iteration scorecard produced so far, the iteration that halted, reviewers that failed, CRITICAL items remaining, and the logs_dir path. The serialized state has no `tier` field — an old-schema suspension file (from the prior tiered engine) is not resumable and must be deleted manually.
 2. Escalate to the user with a blocking prompt: continue the halted loop, suspend, or fix manually.
 3. Release the lockfile.
 4. The next `/review-document` invocation on this artifact auto-detects `REVIEW_SUSPENDED.md` and resumes from the saved state. No explicit resume command is needed.
 
-This is the only user-interaction point in the cascade. It is an error-path escalation, not a routine checkpoint — it fires when a CRITICAL-severity item could not be driven to zero within the 3-iteration cap. Routine runs do not prompt the user at all.
+This is the only user-interaction point in the cascade. It is an error-path escalation, not a routine checkpoint — it fires when a CRITICAL-severity item could not be driven to zero within the configured iteration cap. Routine runs do not prompt the user at all.

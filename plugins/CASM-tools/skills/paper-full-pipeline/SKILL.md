@@ -111,7 +111,7 @@ The pipeline is designed to run end-to-end without prompting. The only interacti
 
 1. **Preprocess choice** (stage 0, at most once): generate markdown via `marker_single` or skip. Decision is durable per-SHA, so stages 1–3 do not re-prompt.
 2. **Supplementary paper requests** (stage 2 only): the extension-proposer may pause with a list of papers it wants. Provide PDFs or tell the agent to proceed without them.
-3. **CRITICAL escalation** (error path): if any tier hits its 3-iteration cap with CRITICAL items unresolved, `/CASM-tools:review-document` blocks with continue/suspend/fix-manually. This does not fire on routine runs.
+3. **CRITICAL escalation** (error path): if the cascade hits its iteration cap with CRITICAL items unresolved, `/CASM-tools:review-document` blocks with continue/suspend/fix-manually. This does not fire on routine runs.
 
 No interactive checkpoints at the end of each review stage. Each cascade installs its final version automatically. If the user wants a different version, they copy it from the cascade's logs directory manually.
 

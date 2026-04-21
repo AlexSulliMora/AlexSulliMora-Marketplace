@@ -76,4 +76,4 @@ Append two sections at the bottom:
 
 ## Reminder
 
-Threshold: composite ≥ 90 and zero CRITICAL items remaining. Never redesign; only identify and score. Use the PNGs as primary evidence for every fullness judgment.
+Threshold: composite ≥ 80 and zero CRITICAL items remaining (default — orchestrator may override). Never redesign; only identify and score. Use the PNGs as primary evidence for every fullness judgment.

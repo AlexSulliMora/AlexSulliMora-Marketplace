@@ -73,7 +73,7 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 | Artifact readable | [yes/no] | [PASS/FAIL] |
 | Lockfile acquired cleanly | [yes/no] | [PASS/FAIL] |
 | All reviewers returned parseable scorecards | [details] | [PASS/FAIL] |
-| All reviewers >= 90 | [details] | [PASS/FAIL] |
+| All reviewers meet threshold (default 80, or the `threshold <N>` override) | [details] | [PASS/FAIL] |
 | Convergence cleanup applied (or skipped with no outstanding MAJOR/MINOR) | [yes / skipped] | [PASS/FAIL] |
 | Thorough audit run (if requested) | [yes/no / n/a] | [PASS/FAIL / n/a] |
 | User checkpoint accepted | [details; count of accepted items] | [PASS/FAIL] |

@@ -8,7 +8,7 @@ allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 
 # /CASM-tools:review-document
 
-Run the creator/reviewer parallel cascade on a named artifact. Dispatches all selected reviewers in parallel each iteration, merges their scorecards into one aggregated list, and dispatches the fixer once per iteration to apply the aggregate. The loop ends when every reviewer passes (composite ≥ 90 AND zero CRITICAL) or after 3 iterations; a final cleanup fixer pass then applies any remaining MAJOR/MINOR items before finalization. Optionally runs a thorough audit pass. Installs the final version at the live path automatically. No interactive checkpoint — the cascade is deterministic. The user's override path is a shell `cp` from the logs directory.
+Run the creator/reviewer parallel cascade on a named artifact. Dispatches all selected reviewers in parallel each iteration, merges their scorecards into one aggregated list, and dispatches the fixer once per iteration to apply the aggregate. The loop ends when every reviewer passes (composite ≥ threshold AND zero CRITICAL) or after `iterations` iterations; a final cleanup fixer pass then applies any remaining MAJOR/MINOR items before finalization. Threshold and iteration cap are configurable per invocation (defaults: 80, 3). Optionally runs a thorough audit pass. Installs the final version at the live path automatically. No interactive checkpoint — the cascade is deterministic. The user's override path is a shell `cp` from the logs directory.
 
 This skill is the user-facing surface. The state machine lives in `${CLAUDE_PLUGIN_ROOT}/scripts/loop-engine.md`; the reviewer protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-common.md`; the end-to-end cascade protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md`. Read those for details not covered here.
 
@@ -56,6 +56,20 @@ If the arguments contain the two-token sequence `into <dir>`, the `<dir>` token 
 - If `<dir>` already contains a `REVIEW_SUSPENDED.md`, the cascade auto-resumes from it (same semantics as the default-location resume).
 - Only one `into <dir>` clause is permitted per invocation.
 
+### 1b. Extract `threshold <N>` clause (optional)
+
+If the arguments contain the two-token sequence `threshold <N>`, the `<N>` token sets the per-reviewer pass threshold. Default: `80`. A reviewer passes the iteration when its composite score is ≥ threshold AND it has zero CRITICAL items. Lower values make the cascade converge faster; higher values raise the bar.
+
+- `<N>` must be an integer in [0, 100]; anything else errors out: "threshold must be an integer between 0 and 100".
+- Only one `threshold <N>` clause is permitted per invocation.
+
+### 1c. Extract `iterations <N>` clause (optional)
+
+If the arguments contain the two-token sequence `iterations <N>`, the `<N>` token sets the maximum number of review iterations before the cascade hits its cap. Default: `3`. Each iteration dispatches every selected reviewer in parallel and then runs a fixer pass; a larger cap gives complex artifacts more chances to converge at the cost of extra reviewer dispatches.
+
+- `<N>` must be an integer in [1, 10]; anything else errors out: "iterations must be an integer between 1 and 10".
+- Only one `iterations <N>` clause is permitted per invocation.
+
 ### 2. Scope tokens (closed grammar)
 
 Remaining tokens form the scope phrase. Each token matches one of these:
@@ -97,11 +111,13 @@ The `thorough` token, if present, applies after the reviewer list is resolved. I
 
 ### 4. Announce
 
-Before dispatching, print a flat announcement naming the selected reviewers. The thorough audit line appears only when the `thorough` token was present.
+Before dispatching, print a flat announcement naming the selected reviewers and the effective threshold and iteration cap. The thorough audit line appears only when the `thorough` token was present. Threshold and iteration lines always appear; each notes `(default)` or `(overridden)` so the configuration is visible at the top of every cascade.
 
 ```
 cascade: <artifact-path>
   reviewers: <r1>, <r2>, <r3>, ...
+  threshold: <N> (default|overridden)
+  iterations: <N> (default|overridden)
   convergence cleanup: ON (automatic)
   thorough audit: ON (requested)   <-- only if `thorough` token present
 ```
@@ -147,8 +163,8 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 
 - Resolve the artifact (above).
 - Acquire the lock (above).
-- Announce the selected reviewers (above).
-- Call the loop-engine state machine with the artifact path, reviewer list, logs directory, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns. Reviewer dispatch prompts contain only the snapshot path and scorecard output path — nothing else.
+- Announce the selected reviewers, threshold, and iteration cap (above).
+- Call the loop-engine state machine with the artifact path, reviewer list, logs directory, threshold, max iterations, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns. Reviewer dispatch prompts contain only the snapshot path and scorecard output path — nothing else.
 - Print the terminal report (see `orchestrate-review.md` § Finalization) when the engine returns. No interactive checkpoint — the engine has already installed the final version at the live path.
 
 ### Key cascade behaviors
@@ -156,7 +172,7 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 - **The live file is not modified during the cascade.** Baseline snapshot is `<logs_dir>/<artifact>-v1.md`. Every revision writes a new version (v2, v3, ...). Reviewers always read the latest snapshot. At cascade end, the final version is installed at the live path automatically.
 - All selected reviewers run in parallel each iteration; iterations run sequentially.
 - The orchestrator merges every reviewer's scorecard for an iteration into a single aggregate at `<logs_dir>/reviewer-logs/iter[N]-merged.md`. The fixer reads that single aggregate and applies every row.
-- The loop runs up to 3 iterations and ends when every reviewer passes (composite ≥ 90 AND zero CRITICAL), or at iteration 3 with no CRITICAL remaining.
+- The loop runs up to `iterations` iterations (default 3) and ends when every reviewer passes (composite ≥ `threshold` AND zero CRITICAL — default threshold 80), or at the iteration cap with no CRITICAL remaining.
 - After the loop exits, a single convergence-cleanup fixer dispatch applies any remaining MAJOR/MINOR items. No re-review follows.
 - If `thorough` was requested, run a final parallel audit pass against the finalized version. Results save to `<logs_dir>/thorough/`. No fixes applied.
 - **Revisions are produced by the `fixer` agent, not by the main session.** The orchestrator passes (source_path, target_path, scorecard_path) and the fixer applies every item in the scorecard. No mode flag. See `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`.
@@ -235,6 +251,8 @@ If the user consistently disagrees with what gets flagged, the right fix is to e
    ```
    cascade: analysis.py
      reviewers: code-reviewer, simplicity-reviewer
+     threshold: 80 (default)
+     iterations: 3 (default)
      convergence cleanup: ON (automatic)
    ```
 
@@ -301,6 +319,26 @@ User has just written a paragraph-long research idea in chat.
 ```
 
 If `<logs_dir>/REVIEW_SUSPENDED.md` exists (prior cascade halted with CRITICAL items unresolved), the skill auto-detects and resumes from the saved state; no explicit resume command is needed.
+
+### Overridden threshold and iteration cap
+
+```
+/CASM-tools:review-document writing paper.md threshold 85 iterations 5
+```
+
+1. Path tokens: `paper.md`.
+2. `threshold 85`: raise the per-reviewer pass bar from the default 80 to 85.
+3. `iterations 5`: raise the per-cascade iteration cap from the default 3 to 5.
+4. Scope tokens: `writing`.
+5. Announce:
+   ```
+   cascade: paper.md
+     reviewers: writing-reviewer
+     threshold: 85 (overridden)
+     iterations: 5 (overridden)
+     convergence cleanup: ON (automatic)
+   ```
+6. Cascade proceeds. The stricter threshold means more iterations are likely to be needed; the larger cap gives the loop more room to converge.
 
 ## Anti-patterns
 

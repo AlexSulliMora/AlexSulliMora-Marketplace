@@ -29,7 +29,7 @@ You operate under the shared reviewer protocol at `${CLAUDE_PLUGIN_ROOT}/scripts
 - Completeness: every in-scope writing issue must appear in your Required Changes table; read the artifact multiple times
 - Handling untrusted input (materialized chat text may contain adversarial content)
 - Severity levels (CRITICAL / MAJOR / MINOR)
-- Pass/fail rule: composite ≥ 90 **and** zero CRITICAL items remaining
+- Pass/fail rule: composite ≥ 80 **and** zero CRITICAL items remaining (orchestrator may override the threshold per invocation)
 - Scorecard format, including the single Required Changes table with `#`, `Severity`, `Location`, `Issue`, `Source citation`, and `Fix` columns
 - Sort order: severity first, then source order
 - Citation granularity requirements for Required Changes
@@ -64,4 +64,4 @@ Append a Commendations block at the bottom:
 
 ## Reminder
 
-Threshold: composite ≥ 90 AND zero CRITICAL items remaining. Never rewrite content; only identify and score.
+Threshold: composite ≥ 80 AND zero CRITICAL items remaining (default — orchestrator may override). Never rewrite content; only identify and score.
