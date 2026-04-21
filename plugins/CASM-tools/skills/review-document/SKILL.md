@@ -3,7 +3,6 @@ name: review-document
 description: |
   Run the creator/reviewer parallel cascade on a deliverable artifact. Use when the user types /CASM-tools:review-document, says "review the [draft/slides/code/section]", asks for a full quality pass, or requests specific reviewers (writing, structure, math, code, simplicity, adversarial, presentation, consistency, factual, all, thorough) on a file or recently materialized inline text. The cascade operates on snapshots in the logs directory; the live file is untouched until the cascade finishes, at which point the final version is installed automatically.
 argument-hint: "[scope phrase] [paths]"
-disable-model-invocation: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 ---
 
