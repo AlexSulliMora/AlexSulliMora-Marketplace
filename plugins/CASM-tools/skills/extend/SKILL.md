@@ -11,7 +11,12 @@ Propose research extensions to a summarized paper. The initial candidate list an
 
 ## Preference injection (automatic via preference-injection hook)
 
-The CASM-tools plugin's `PreToolUse` hook intercepts the `extension-proposer` dispatch and prepends `writing-style.md` + `structure-style.md` preferences to the prompt. Dispatch the creator normally — the hook does the rest. The creator's body carries a fallback file-read pointer if the hook is disabled.
+The extension-proposer's style preferences are injected automatically by the plugin's PreToolUse hook before the subagent spawns.
+
+> **Dispatch exactly the task. Do not add preferences.**
+> The hook prepends the relevant style preferences automatically.
+> If you include preference content manually, the agent receives it twice.
+> If the hook is disabled, the agent's body carries a fallback pointer — the agent handles recovery, not the orchestrator.
 
 ## Prerequisites
 

@@ -152,6 +152,15 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 
 The sections below enumerate the error conditions, validation rules, utilities, and data formats referenced by the cascade above.
 
+## Reviewer dispatch prompt format
+
+A reviewer dispatch prompt contains exactly two things:
+
+1. The path to the current snapshot (`current_snapshot_path`) — the file to score.
+2. The path where the reviewer must write its scorecard (`logs_dir/reviewer-logs/tier[T]-iter[N]-[reviewer].md`).
+
+Do not add preferences, protocol instructions, or scoring rubrics to the dispatch prompt. The hook prepends style preferences automatically before the subagent spawns; the scoring protocol is in the reviewer's agent body. A dispatch prompt that adds preference content will cause the reviewer to receive it twice.
+
 ## Fixer dispatch contract
 
 Every fixer dispatch passes these three paths in the prompt (plain prose, not JSON — the agent parses the task description):

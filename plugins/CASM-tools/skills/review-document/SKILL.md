@@ -15,9 +15,12 @@ This skill is the user-facing surface. The tier definitions live in `${CLAUDE_PL
 
 ## Preference injection (automatic via hook)
 
-Style preferences (scoring weights, severity calibration, what-to-flag lists) for each reviewer live under `${CLAUDE_PLUGIN_ROOT}/preferences/<name>-style.md`. A `PreToolUse` hook (`${CLAUDE_PLUGIN_ROOT}/hooks/inject-preferences.py`, registered in this plugin's `plugin.json`) intercepts every Agent tool dispatch whose `subagent_type` matches a known reviewer and prepends the relevant preferences file contents to the `prompt` field before the subagent spawns.
+Each reviewer's style preferences are injected automatically by the plugin's PreToolUse hook before the subagent spawns. You do not need to read, locate, or include any preferences files in the dispatch prompt.
 
-You do not need to include preferences content manually in the dispatch prompt. Dispatch each reviewer normally — the hook handles injection. If the hook is disabled or fails to resolve its preferences directory, each reviewer agent's body carries a fallback "read preferences file if not already injected" pointer, so the reviewer still scores against the current preferences.
+> **Dispatch exactly the task. Do not add preferences.**
+> The hook prepends the relevant style preferences to each reviewer's prompt automatically.
+> If you include preference content manually, the reviewer receives it twice.
+> If the hook is disabled, each reviewer's agent body carries a fallback "read preferences if not injected" pointer — the reviewer handles recovery, not the orchestrator.
 
 ## Quick start
 
@@ -149,7 +152,7 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 - Acquire the lock (above).
 - Load tier assignments from `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md`.
 - Announce reviewer selection grouped by tier (above).
-- Call the loop-engine state machine with the artifact path, reviewer list, tier assignment, logs directory, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns.
+- Call the loop-engine state machine with the artifact path, reviewer list, tier assignment, logs directory, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns. Reviewer dispatch prompts contain only the snapshot path and scorecard output path — nothing else.
 - Print the terminal report (see `orchestrate-review.md` § Finalization) when the engine returns. No interactive checkpoint — the engine has already installed the final version at the live path.
 
 ### Key cascade behaviors
@@ -315,4 +318,3 @@ If `<logs_dir>/REVIEW_SUSPENDED.md` exists (prior cascade halted with CRITICAL i
 - Do NOT apply items from the thorough audit pass. The audit is informational only.
 - Do NOT silently guess at an unknown scope token. The closed grammar is enforced so unparseable input fails loudly.
 - Do NOT reintroduce an interactive checkpoint. If the user consistently disagrees with what gets flagged, they update the relevant `<reviewer>-style.md` preferences file. Per-run overrides are a shell `cp` from the logs directory; the cascade itself does not negotiate.
-- Do NOT manually include preferences blocks in the reviewer dispatch prompt. The PreToolUse hook handles injection. If you paste preferences manually on top of the hook injection, the reviewer sees two copies.
