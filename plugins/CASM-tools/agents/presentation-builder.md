@@ -31,9 +31,9 @@ The skill that dispatches you (`/CASM-tools:present` or `/CASM-tools:run`) injec
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/presentation-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/writing-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/structure-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/presentation-style.md`
 
 If the preferences conflict with anything below (slide theme, font size, progressive opacity, slide structure, etc.), the preferences win. The `presentation-style.md` file is shared with the presentation-reviewer so your drafts and the reviewer's scoring stay aligned.
 
@@ -263,22 +263,9 @@ If compilation fails, diagnose and fix the `.qmd` source. Common issues:
 - Missing blank lines before/after fenced blocks
 - LaTeX errors in equations (for PDF output)
 
-## Revision Process
+## Your scope is v0 only
 
-When given a scorecard from reviewers:
-1. Read all required changes from every reviewer (presentation, writing, consistency, factual).
-2. Revise both files together — a change in one may require a corresponding change in the other.
-3. Save as new versions (e.g., `presentation-v2.qmd`, `writeup-v2.qmd`).
-4. Re-compile both after revision.
-
-## Surgical fix requests from the User Review Checkpoint
-
-The pipeline has a User Review Checkpoint after the automatic review loop converges. The user may ask you to fix only specific outstanding items from the final scorecard. When you receive a surgical fix request — identifiable by an explicit instruction at the top of the scorecard such as "The user has asked you to address ONLY the items below" — you MUST:
-
-1. Address only the items listed in the filtered scorecard. Do not touch any slide, section, or paragraph that is not referenced by those items.
-2. Do not polish, reword, or restructure unrelated content. The user has already accepted the rest of both documents.
-3. When a surgical fix in one document necessitates a matching change in the other (e.g., fixing a factual claim on slide 5 requires the corresponding writeup section to match), make the matching change, and note this explicitly in a comment at the top of the revised file so the user understands why the "companion" document also changed.
-4. Save as the next versioned file (e.g., `presentation-v[N+1].qmd`, `writeup-v[N+1].qmd`) and let the review loop re-compile, re-screenshot, and re-score normally.
+Revisions during the review cascade are produced by the dedicated `fixer` agent (see `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`), not by you. You only produce the initial drafts of `presentation.qmd` and `writeup.qmd`. If you are invoked with a scorecard for revision, dispatch-routing has gone wrong — note the mismatch in your output and stop.
 
 ## Quality Standards
 - Presentation must be presentable as-is — no "TODO" or placeholder slides

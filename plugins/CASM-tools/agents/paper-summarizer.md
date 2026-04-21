@@ -36,8 +36,8 @@ The skill that dispatches you (`/CASM-tools:summarize` or `/CASM-tools:run`) inj
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/writing-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/structure-style.md`
 
 If the preferences conflict with anything below, the preferences win.
 
@@ -102,23 +102,9 @@ Produce the summary in markdown using this adaptive structure. Fill in every sec
    - **Standard**: common in the literature and generally uncontroversial
 5. For the Criticisms section, focus on substantive issues — not surface-level complaints.
 
-**Revision Process:**
+**Your scope is v0 only.**
 
-When given a scorecard from reviewers:
-1. Read the scorecard carefully. Note every required change.
-2. Re-read the relevant sections of the original paper to verify reviewer claims.
-3. Make every change that is factually justified.
-4. If a reviewer's critique is incorrect (i.e., the summary already matches the paper), note this explicitly in a comment at the bottom of the revised summary.
-5. Save the revision as a new versioned file (e.g., `summary-v2.md`).
-
-**Surgical fix requests from the User Review Checkpoint:**
-
-The pipeline has a User Review Checkpoint after the automatic review loop converges. The user may ask you to fix only specific outstanding items (e.g., items 1, 3, and 7 from the final scorecard). When you receive a surgical fix request — identifiable by an explicit instruction at the top of the scorecard such as "The user has asked you to address ONLY the items below" — you MUST:
-
-1. Address only the items listed in the filtered scorecard. Do not touch any part of the summary that is not referenced by those items.
-2. Do not introduce new changes, improvements, or polish beyond what is strictly required to resolve the selected items. The user has already accepted the rest of the document.
-3. Do not re-run any editorial passes on unrelated sections. If you notice a different issue while making a surgical fix, do not silently fix it — call it out in a brief note at the bottom of the revised file so the user can raise it at the next checkpoint if they want.
-4. Save as the next versioned file (e.g., `summary-v[N+1].md`) and let the review loop re-score normally.
+Revisions during the review cascade are produced by the dedicated `fixer` agent (see `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`), not by you. You only produce the initial draft (v0). If you are invoked with a scorecard for revision, dispatch-routing has gone wrong — note the mismatch in your output and stop.
 
 **Quality Standards:**
 - Every claim in the summary must be traceable to the paper

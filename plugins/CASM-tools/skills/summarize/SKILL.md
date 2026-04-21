@@ -46,7 +46,7 @@ If `paper-extension/summary.md` already exists, confirm with the user before ove
 
 ### 2. Preprocess paper (auto)
 
-Invoke the `CASM-tools:preprocess` skill via the Skill tool, passing the absolute PDF path. Idempotent — short-circuits on a fresh cache. Proceed regardless of outcome.
+Invoke the `CASM-tools:preprocess` skill via the Skill tool, passing the absolute PDF path. The preprocess skill will ask the user whether to generate a markdown cache (reduces LLM token usage but takes 10–20 min on CPU) or skip straight to PDF reading. Either answer is acceptable — `paper-summarizer` falls back to the PDF when `paper.md` is absent.
 
 ### 3. Initial draft from paper-summarizer
 
@@ -62,25 +62,25 @@ The paper-summarizer writes v0 of the summary to the canonical live location. `/
 
 ### 4. Hand off to /CASM-tools:review-document
 
-Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/summary.md`:
+Build the cascade logs directory path using the current timestamp (24-hour PST, `YY-MM-DDTHH-MM`):
 
 ```
-args: "all paper-extension/summary.md"
+LOGS_DIR="paper-extension/summary-logs/summary-<YY-MM-DDTHH-MM>"
 ```
 
-The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The cascade handles iteration, User Review Checkpoint, and installing the accepted version at `paper-extension/summary.md`.
+Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/summary.md` and the `into <dir>` clause pointing at that directory:
+
+```
+args: "all paper-extension/summary.md into paper-extension/summary-logs/summary-<YY-MM-DDTHH-MM>"
+```
+
+The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/summary.md` automatically (no interactive checkpoint). All cascade artifacts — versions, `reviewer-logs/`, `thorough/`, `summary-final.md`, `summary-combined-scorecard.md` — land inside the named logs directory.
 
 Record the cascade's logs directory path in the session log.
 
-### 5. Mirror cascade artifacts for meta-review
+### 5. (Removed — no mirroring needed)
 
-After the cascade returns, mirror its key artifacts into `paper-extension/summary-logs/`:
-
-```bash
-CASCADE_DIR="docs/reviews/summary-<timestamp>"   # resolved from announcement
-cp "$CASCADE_DIR/combined-scorecard.md" paper-extension/summary-logs/summary-scorecard.md 2>/dev/null || true
-cp "$CASCADE_DIR/accepted-issues.md"    paper-extension/summary-logs/accepted-issues.md   2>/dev/null || true
-```
+Because the cascade already writes into `paper-extension/summary-logs/summary-<timestamp>/`, no copy step is required. The meta-review skill reads directly from that location.
 
 ### 6. Finalize
 
@@ -90,7 +90,7 @@ Report to the user:
 
 ```
 Summary finalized: paper-extension/summary.md
-Cascade logs: docs/reviews/summary-<timestamp>/
+Cascade logs: paper-extension/summary-logs/summary-<timestamp>/
 Final scores: [from cascade]
 Accepted outstanding items: [count]
 ```
@@ -98,10 +98,8 @@ Accepted outstanding items: [count]
 ## Output
 
 - `paper-extension/summary.md` — the finalized summary
-- `paper-extension/summary-logs/summary-scorecard.md` — cascade scorecard mirror
-- `paper-extension/summary-logs/accepted-issues.md` — cascade accepted-issues mirror
+- `paper-extension/summary-logs/summary-<timestamp>/` — full cascade trail (versions, reviewer-logs/, thorough/, summary-final.md, summary-combined-scorecard.md)
 - `paper-extension/session-logs/YYYY-MM-DD_summarize.md` — pipeline-level log
-- `docs/reviews/summary-<timestamp>/` — full cascade iteration trail
 
 ## Error handling
 

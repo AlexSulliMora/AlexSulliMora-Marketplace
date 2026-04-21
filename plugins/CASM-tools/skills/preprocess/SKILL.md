@@ -11,9 +11,10 @@ Convert the paper PDF to markdown so downstream agents read a pre-parsed text ca
 
 ## Prerequisites
 
-- A PDF file path must be provided as an argument
-- `marker_single` should be available on PATH (installed via `pip install marker-pdf`)
-- If `marker_single` is missing, this skill exits cleanly with an install hint. The pipeline tolerates a missing `paper.md` — downstream agents fall back to reading the PDF directly — so a missing marker-pdf is a soft failure by design, not a blocker.
+- A PDF file path must be provided as an argument.
+- `marker_single` must be available on PATH (installed via `pip install marker-pdf`) **if the user answers `yes` to the prompt in step 0**. The first run downloads ~2 GB of models.
+- Conversion on a CPU typically takes 10–20 minutes and can run longer for larger papers; on a GPU it is much faster. This is why the skill asks before running.
+- If the user answers `no`, or if `marker_single` is missing, the skill exits cleanly — downstream agents fall back to reading the PDF directly, so the pipeline still works.
 
 ## When to run
 
@@ -23,6 +24,82 @@ Convert the paper PDF to markdown so downstream agents read a pre-parsed text ca
 Users do not normally invoke this skill directly — the other pipeline stages do it for them.
 
 ## Process
+
+### 0. Check for a prior decision on the current PDF (short-circuit both ways)
+
+Before prompting, compute the source PDF checksum and check for either of these pre-existing decisions tied to the current SHA256:
+
+```bash
+SRC_PDF="<absolute-path-to-paper.pdf>"
+SRC_SHA="$(sha256sum "$SRC_PDF" | awk '{print $1}')"
+
+# Case A: fresh markdown cache already exists
+if [ -f paper-extension/paper.md ]; then
+    CACHED_SHA="$(grep -E '^source_sha256:' paper-extension/paper.md | head -1 | awk '{print $2}')"
+    if [ "$CACHED_SHA" = "$SRC_SHA" ]; then
+        echo "paper.md cache is fresh (sha256 matches). Skipping preprocess — no prompt needed."
+        exit 0
+    fi
+fi
+
+# Case B: user previously declined preprocessing on this exact PDF
+if [ -f "paper-extension/.preprocess-declined" ]; then
+    DECLINED_SHA="$(cat paper-extension/.preprocess-declined)"
+    if [ "$DECLINED_SHA" = "$SRC_SHA" ]; then
+        echo "User previously declined preprocessing on this PDF (sha256 matches). Skipping prompt; downstream agents will read the PDF directly."
+        exit 0
+    fi
+fi
+```
+
+Either case exits 0 with no prompt — the user has already decided for this PDF and the decision is durable until the PDF itself changes (new SHA256 invalidates both caches).
+
+Only if both checks miss do we proceed to the prompt below.
+
+### 0a. Ask the user whether to run marker
+
+Use the `AskUserQuestion` tool to ask the user whether to generate a markdown cache or skip preprocessing.
+
+Dispatch this question shape:
+
+```
+AskUserQuestion({
+  questions: [{
+    question: "Preprocess the paper into markdown?",
+    header: "Preprocess",
+    multiSelect: false,
+    options: [
+      {
+        label: "Generate markdown",
+        description: "Run marker_single to convert the PDF into paper-extension/paper.md. Reduces LLM token usage across summarize, extend, present. Requires `marker_single` (pip install marker-pdf); on CPU, conversion typically takes 10–20 minutes (longer for large papers), and the first run downloads ~2 GB of models. On GPU it is much faster."
+      },
+      {
+        label: "Skip, read PDF directly",
+        description: "Do not run marker. Downstream agents read the PDF directly on each call. Higher token usage but zero preprocessing wait time."
+      }
+    ]
+  }]
+})
+```
+
+Map the user's answer:
+
+- `Generate markdown` → continue to step 1 below.
+- `Skip, read PDF directly` → skip marker entirely. Record the decision so re-invocations on the same PDF do not re-prompt:
+
+  ```bash
+  mkdir -p paper-extension
+  echo "$SRC_SHA" > paper-extension/.preprocess-declined
+  ```
+
+  Do NOT write `paper.md`. Report "skipping preprocess at user request; downstream agents will read the PDF directly." Exit 0.
+- If the user selects "Other" and provides free text, interpret generously (yes/y/run/generate → run; no/n/skip → skip). If the free text is ambiguous, re-ask the question once.
+
+Steps 1–6 only run when the user chose "Generate markdown". If `Generate markdown` is chosen, also remove any stale decline marker so the choice is unambiguous:
+
+```bash
+rm -f paper-extension/.preprocess-declined
+```
 
 ### 1. Resolve paths and compute checksum
 
@@ -35,21 +112,7 @@ SRC_PDF="<absolute-path-to-paper.pdf>"
 SRC_SHA="$(sha256sum "$SRC_PDF" | awk '{print $1}')"
 ```
 
-### 2. Short-circuit if the cache is fresh
-
-If `paper-extension/paper.md` already exists, read its YAML frontmatter and extract the `source_sha256:` line. If that value matches `$SRC_SHA`, the cache is already current — report "cache is fresh, skipping" to the user and exit. Do NOT rerun marker.
-
-```bash
-if [ -f paper-extension/paper.md ]; then
-    CACHED_SHA="$(grep -E '^source_sha256:' paper-extension/paper.md | head -1 | awk '{print $2}')"
-    if [ "$CACHED_SHA" = "$SRC_SHA" ]; then
-        echo "paper.md cache is fresh (sha256 matches). Skipping preprocess."
-        exit 0
-    fi
-fi
-```
-
-### 3. Verify marker_single is available (soft dependency)
+### 2. Verify marker_single is available (soft dependency)
 
 ```bash
 if ! command -v marker_single >/dev/null 2>&1; then
@@ -62,7 +125,7 @@ fi
 
 Exit status is 0 here, not an error — a missing `marker_single` must not break the pipeline.
 
-### 4. Run marker_single
+### 3. Run marker_single
 
 ```bash
 marker_single "$SRC_PDF" paper-extension/preprocess-logs --output_format markdown
@@ -70,7 +133,7 @@ marker_single "$SRC_PDF" paper-extension/preprocess-logs --output_format markdow
 
 If `marker_single` exits with non-zero status, capture stderr, warn, delete any partial output, and exit 0.
 
-### 5. Install the markdown cache
+### 4. Install the markdown cache
 
 ```bash
 STEM="$(basename "$SRC_PDF" .pdf)"
@@ -103,7 +166,7 @@ if [ -d "paper-extension/preprocess-logs/${STEM}/images" ]; then
 fi
 ```
 
-### 6. Sanity-check the output
+### 5. Sanity-check the output
 
 Read `paper-extension/paper.md` (first ~2000 characters) and verify the frontmatter parses, the body has English text, at least one heading appears in the first 200 lines, and the file is ≥ 10 KB or ≥ 200 lines.
 
@@ -114,7 +177,7 @@ rm -f paper-extension/paper.md
 echo "Warning: preprocess output failed sanity check. Removed paper.md; agents will fall back to PDF." >&2
 ```
 
-### 7. Session log
+### 6. Session log
 
 Create `paper-extension/session-logs/YYYY-MM-DD_preprocess.md` from `${CLAUDE_PLUGIN_ROOT}/scripts/session-log-template.md`. Record source PDF path and SHA256, output line/char count, image count, sanity-check warnings, and marker run duration.
 
@@ -127,9 +190,11 @@ Create `paper-extension/session-logs/YYYY-MM-DD_preprocess.md` from `${CLAUDE_PL
 
 ## Notes
 
-- The cache is invalidated on SHA256 mismatch. If the user updates the PDF, the next pipeline run regenerates.
-- marker-pdf's first run downloads ~2 GB of models. Subsequent papers are much faster.
+- The cache is invalidated on SHA256 mismatch. If the user updates the PDF, the next pipeline run regenerates (subject to the step-0 prompt).
+- marker-pdf's first run downloads ~2 GB of models. Subsequent papers reuse the cached models.
+- CPU conversion takes 10–20 minutes for typical papers; GPU is much faster. The step-0 prompt exists so the user can opt out when that cost doesn't match the current task.
 - If marker-pdf is not installed, the pipeline keeps working; it just loses the speedup. Install with `pip install marker-pdf` to unlock it.
+- The prompt in step 0 is asked on every invocation. Pipeline skills (`summarize`, `extend`, `present`, `run`) that invoke preprocess automatically will surface this prompt to the user before doing work — so the user decides per-paper whether to pay the conversion cost.
 
 ## Troubleshooting
 
