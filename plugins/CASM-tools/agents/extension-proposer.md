@@ -4,7 +4,7 @@ description: |
   Use this agent to propose research extensions to a summarized academic economics paper. This agent generates extension ideas by analyzing assumptions, identifying complementary papers, and selecting the most promising direction for further research.
 
   <example>
-  Context: A paper summary has been finalized and the extend skill needs extension proposals
+  Context: A paper summary has been finalized and the paper-extend skill needs extension proposals
   user: "Propose extensions for this paper based on the summary"
   assistant: "I'll use the extension-proposer agent to analyze the summary and generate candidate extensions."
   <commentary>
@@ -32,7 +32,7 @@ Given a paper summary (and access to the original PDF), propose meaningful resea
 
 ## Style preferences
 
-The skill that dispatches you (`/CASM-tools:extend` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
+The skill that dispatches you (`/CASM-tools:paper-extend` or `/CASM-tools:paper-full-pipeline`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 

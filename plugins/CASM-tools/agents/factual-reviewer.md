@@ -5,7 +5,7 @@ description: |
 
   <example>
   Context: A paper summary draft needs factual verification against the original PDF
-  user: "/review-document factual the summary.md against paper.pdf"
+  user: "/review-document factual the paper-summary.md against paper.pdf"
   assistant: "I'll dispatch factual-reviewer to verify the summary against the paper."
   </example>
 model: inherit

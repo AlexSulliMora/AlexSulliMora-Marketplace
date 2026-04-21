@@ -4,7 +4,7 @@ description: |
   Use this agent to read and summarize an academic economics paper from a PDF file. This agent produces structured summaries covering literature contribution, model setup, data, identification, results, assumptions, and criticisms.
 
   <example>
-  Context: User has provided a PDF path and the summarize skill needs to create an initial summary draft
+  Context: User has provided a PDF path and the paper-summarize skill needs to create an initial summary draft
   user: "Summarize this paper: ./papers/acemoglu2001.pdf"
   assistant: "I'll use the paper-summarizer agent to read and produce a structured summary of the paper."
   <commentary>
@@ -32,7 +32,7 @@ Produce a structured summary of an academic paper provided as a PDF file. The su
 
 ## Style preferences
 
-The skill that dispatches you (`/CASM-tools:summarize` or `/CASM-tools:run`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
+The skill that dispatches you (`/CASM-tools:paper-summarize` or `/CASM-tools:paper-full-pipeline`) injects style preferences from this plugin into your dispatch prompt. Those preferences define scoring weights, severity calibration, and the specific writing and structure rules the review cascade will score your draft against. Follow them when drafting v0.
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 

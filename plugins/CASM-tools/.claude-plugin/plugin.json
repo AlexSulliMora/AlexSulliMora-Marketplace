@@ -1,7 +1,7 @@
 {
   "name": "CASM-tools",
   "version": "0.4.0",
-  "description": "Personal tool plugin. Ships a tiered creator/reviewer review cascade (/CASM-tools:review-document) with nine reviewer agents, shared preferences controlling scoring and style, and an academic-paper pipeline (summarize, extend, present) that uses the same cascade for its internal quality loops.",
+  "description": "Personal tool plugin. Ships a tiered creator/reviewer review cascade (/CASM-tools:review-document) with nine reviewer agents, shared preferences controlling scoring and style, and an academic-paper pipeline (paper-summarize, paper-extend, paper-present, paper-preprocess, paper-full-pipeline) that uses the same cascade for its internal quality loops.",
   "author": {
     "name": "sulli"
   },

@@ -22,6 +22,10 @@ Each reviewer's style preferences are injected automatically by the plugin's Pre
 > If you include preference content manually, the reviewer receives it twice.
 > If the hook is disabled, each reviewer's agent body carries a fallback "read preferences if not injected" pointer — the reviewer handles recovery, not the orchestrator.
 
+## Artifact name constraint (Write-filter compatibility)
+
+The cascade derives every versioned output filename (`<artifact>-v1.md`, `<artifact>-final.md`, `<artifact>-combined-scorecard.md`) from the artifact's basename. A Claude Code server-side filter ([issue #44657](https://github.com/anthropics/claude-code/issues/44657)) blocks the subagent Write tool on any file whose basename starts (case-insensitive) with `report`, `summary`, `findings`, or `analysis`. Until that filter is lifted, **rename any artifact with one of those prefixes before invoking the cascade** — e.g. `summary.md` → `paper-summary.md`, `analysis.md` → `draft-analysis.md`. Cascade dispatches on a blocked basename will silently fail at the reviewer fixer step.
+
 ## Quick start
 
 Two invocation shapes cover most use:
@@ -47,7 +51,7 @@ Collect paths into the target list. If multiple paths are provided, dispatch rev
 
 ### 1a. Extract `into <dir>` clause (optional)
 
-If the arguments contain the two-token sequence `into <dir>`, the `<dir>` token sets `logs_dir` for this cascade and overrides the default location. The directory is created if it does not exist. The pipeline skills (`summarize`, `extend`, `present`) use this to route cascade output into their own per-paper log folders.
+If the arguments contain the two-token sequence `into <dir>`, the `<dir>` token sets `logs_dir` for this cascade and overrides the default location. The directory is created if it does not exist. The pipeline skills (`paper-summarize`, `paper-extend`, `paper-present`) use this to route cascade output into their own per-paper log folders.
 
 - `<dir>` can be an absolute path or a path relative to the session cwd.
 - If `<dir>` already contains a `REVIEW_SUSPENDED.md`, the cascade auto-resumes from it (same semantics as the default-location resume).
@@ -291,11 +295,11 @@ User has just written a paragraph-long research idea in chat.
 ### Invocation with explicit logs directory
 
 ```
-/CASM-tools:review-document all paper-extension/summary.md into paper-extension/summary-logs/summary-26-04-20T14-30
+/CASM-tools:review-document all paper-extension/paper-summary.md into paper-extension/paper-summary-logs/paper-summary-26-04-20T14-30
 ```
 
-1. Path tokens: `paper-extension/summary.md`.
-2. `into <dir>`: sets `logs_dir = paper-extension/summary-logs/summary-26-04-20T14-30`. Directory is created if missing.
+1. Path tokens: `paper-extension/paper-summary.md`.
+2. `into <dir>`: sets `logs_dir = paper-extension/paper-summary-logs/paper-summary-26-04-20T14-30`. Directory is created if missing.
 3. Scope tokens: `all`.
 4. Cascade writes its version snapshots, `reviewer-logs/`, `thorough/`, final, and combined scorecard into the named directory rather than the default `docs/reviews/...` location. The pipeline skills invoke `/CASM-tools:review-document` this way so cascade artifacts live beside the paper-extension content.
 
