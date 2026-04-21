@@ -37,18 +37,22 @@ for tier in 1..5:
 
     for iteration in 1..3:  # per-tier cap
         dispatch applicable in parallel against current draft
-        collect scorecards, write logs_dir/tier[N]-iter[M]-scorecard.md
+        collect scorecards, merge → logs_dir/reviewer-logs/tier[T]-iter[N]-merged.md
 
         if every reviewer in this tier passes (composite ≥ 90 AND zero CRITICAL):
-            break  # tier converged, advance
+            break  # tier converged
 
-        main session revises based on the tier's merged scorecard
+        dispatch `fixer` to revise based on the tier's merged scorecard
 
     if tier exits loop without converging AND any CRITICAL remains:
         halt and present the tier's final scorecard to the user
         (user chooses: continue to next tier anyway, suspend, or fix manually)
 
-    # MAJOR and MINOR items that remain after the cap propagate to the final scorecard.
+    # Tier cleanup: apply any remaining MAJOR/MINOR items before advancing.
+    if tier's final scorecard has remaining MAJOR/MINOR (and zero CRITICAL):
+        write logs_dir/tier[T]-cleanup-request.md with those items
+        dispatch `fixer` to produce the next version
+        # no re-review within this tier — next tier reads the cleaned snapshot
 
 write logs_dir/[artifact]-combined-scorecard.md (final scorecard from each tier, concatenated)
 present final draft and combined scorecard at the user checkpoint
@@ -59,8 +63,8 @@ Convergence rules:
 - **Tier convergence condition:** every reviewer in the tier scores composite ≥ 90 AND has zero CRITICAL items.
 - **Per-tier cap:** 3 iterations. Chosen so five tiers fit within a budget comparable to the old 10-iteration flat loop. Adjust by editing this file if the cap proves wrong.
 - **CRITICAL at cap:** halt and present to the user. CRITICAL items block tier advancement because they mislead readers or break the document.
-- **MAJOR / MINOR at cap:** propagate to the combined scorecard. The user handles them at the checkpoint (`accept`, `use <N>`, `keep original`, `fix <numbers>`, `show <number>`). Most MAJOR/MINOR items from the tiers are resolved earlier by the auto-apply phase and rarely reach the user checkpoint.
-- **Empty tiers:** if no reviewer in a tier is in `reviewer_list` or if all of the tier's reviewers no-op (composite = 100, zero issues) on the first dispatch, the tier advances without revision.
+- **MAJOR / MINOR at end of inner loop:** handled by a single tier-cleanup fixer dispatch before advancing to the next tier. The cleanup pass is not re-reviewed within the current tier; the next tier's reviewers pick up any regression the cleanup introduced.
+- **Empty tiers:** if no reviewer in a tier is in `reviewer_list` or if all of the tier's reviewers no-op (composite = 100, zero issues) on the first dispatch, the tier advances without revision or cleanup.
 
 ## Ordering choices
 

@@ -54,7 +54,9 @@ paper-extension/writeup-logs/
 
 ### 2. Preprocess paper (auto)
 
-Invoke `CASM-tools:preprocess` via the Skill tool.
+If `paper-extension/paper.md` already exists (from a prior summarize/extend/preprocess run on this paper), **skip this step entirely** — do not invoke preprocess. The presentation-builder will read the existing `paper.md` cache, and re-prompting the user about preprocessing would be redundant.
+
+If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
 
 ### 3. Initial drafts from presentation-builder
 
@@ -99,22 +101,28 @@ If compilation fails, surface the error, have the builder fix the source, recomp
 Render per-slide screenshots:
 
 ```bash
-bash ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/scripts/render-slides-to-png.sh \
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/render-slides-to-png.sh \
     paper-extension/presentation.[html|pptx|pdf] \
     paper-extension/presentation-logs/screenshots/current
 ```
 
-The script lives in this plugin (it's reviewer infrastructure, used by presentation-reviewer to rasterize slides for visual review). The exact absolute path depends on where the marketplace is installed — resolve it from `/plugin info CASM-tools@AlexSulliMora-Marketplace` if the path above is wrong.
+The script lives in this plugin (it's reviewer infrastructure, used by presentation-reviewer to rasterize slides for visual review).
 
 ### 5. Hand off to /CASM-tools:review-document
 
-Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on both artifacts:
+Build the cascade logs directory path using the current timestamp (24-hour PST, `YY-MM-DDTHH-MM`):
 
 ```
-args: "all paper-extension/presentation.qmd paper-extension/writeup.qmd"
+LOGS_DIR="paper-extension/presentation-logs/cascade-<YY-MM-DDTHH-MM>"
 ```
 
-Passing both paths triggers consistency-reviewer automatically. The `all` scope includes factual, writing, structure, math, simplicity, adversarial, consistency, and presentation reviewers.
+Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on both artifacts and the `into <dir>` clause:
+
+```
+args: "all paper-extension/presentation.qmd paper-extension/writeup.qmd into paper-extension/presentation-logs/cascade-<YY-MM-DDTHH-MM>"
+```
+
+Passing both paths triggers consistency-reviewer automatically. The `all` scope includes factual, writing, structure, math, simplicity, adversarial, consistency, and presentation reviewers. All cascade artifacts land inside the named logs directory.
 
 **Known limitation:** the cascade does not forward a screenshot directory to presentation-reviewer, so its cascade-internal review falls back to source-based review. Step 6 below addresses this with a post-cascade screenshot pass.
 
@@ -146,13 +154,9 @@ Show the scorecard to the user. If CRITICAL or MAJOR issues were found, ask whet
 
 This step is optional — the user can skip it if they don't need visual-grade review.
 
-### 7. Mirror cascade artifacts for meta-review
+### 7. (Removed — no mirroring needed)
 
-```bash
-CASCADE_DIR="docs/reviews/presentation-<timestamp>"
-cp "$CASCADE_DIR/combined-scorecard.md" paper-extension/presentation-logs/presentation-scorecard.md 2>/dev/null || true
-cp "$CASCADE_DIR/accepted-issues.md"    paper-extension/presentation-logs/accepted-issues.md       2>/dev/null || true
-```
+The cascade already writes into `paper-extension/presentation-logs/cascade-<timestamp>/`; meta-review reads directly from there.
 
 ### 8. Finalize
 

@@ -11,7 +11,7 @@ Read accumulated paper-extensions session logs and mirrored scorecards across pa
 
 ## Hard constraints (non-negotiable)
 
-> **NEVER write to any file under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/` or any `paper-extension/` per-paper directory.**
+> **NEVER write to any file under `${CLAUDE_PLUGIN_ROOT}/` or any `paper-extension/` per-paper directory.**
 >
 > All outputs go under `~/.paper-extensions-meta/`. The live plugin is read-only — you read current files only to copy them as starting points for proposed replacements. Per-paper directories are read-only — you read their session logs and mirrored scorecards only as input data.
 >
@@ -23,7 +23,7 @@ If you ever find yourself about to write to a path that does not begin with `~/.
 
 All live files are in one plugin. Proposals may touch any of these, but still flag the blast radius because the review cascade is used outside the paper pipeline too.
 
-Paths below are all under `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/` — abbreviated `<plugin>/` in the rest of this file.
+Paths below are all under `${CLAUDE_PLUGIN_ROOT}/` — abbreviated `<plugin>/` in the rest of this file.
 
 - **Paper-pipeline creators** (paper-only — affects summarize / extend / present):
   - `<plugin>/agents/paper-summarizer.md`
@@ -69,9 +69,9 @@ For each paper-extension directory, gather:
 
 - Paper title (from the most recent session log's header)
 - Stages completed
-- Final composite scores per stage (from `<stage>-logs/<stage>-scorecard.md`)
-- Cascade logs directory paths (recorded in stage session logs)
-- Whether any `<stage>-logs/accepted-issues.md` files exist and item counts
+- Final composite scores per stage (from the combined scorecard inside each stage's cascade logs)
+- Cascade logs directory paths (recorded in stage session logs — e.g. `paper-extension/summary-logs/summary-<ts>/`)
+- Any outstanding items at cascade end (from the combined scorecard's "Unresolved" section)
 - Most recent activity date
 
 Write `~/.paper-extensions-meta/YYYY-MM-DD-HHMMSS/input-manifest.md` (timestamp via `date -u +%Y-%m-%d-%H%M%S`).
@@ -92,8 +92,8 @@ Format:
 - **Most recent activity:** [date]
 - **Stages completed:** Summarize / Extend / Present
 - **Final scores:** Summarize: F=89 M=94 W=82; Extend: …; Present: …
-- **Cascade logs:** summary: docs/reviews/summary-<ts>; extend: …; present: …
-- **Accepted issues:** summary: N; extend: M; present: K
+- **Cascade logs:** summary: paper-extension/summary-logs/summary-<ts>/; extend: …; present: …
+- **Unresolved at cascade end:** summary: N; extend: M; present: K
 ```
 
 Report the count to the user. If N > 10, pause and ask whether to proceed with the full set or restrict scope.
@@ -106,15 +106,13 @@ Report the count to the user. If N > 10, pause and ask whether to proceed with t
 - Learnings → user-recorded observations
 - Cascade logs paths
 
-**Mirrored scorecards** (`paper-extension/<stage>-logs/<stage>-scorecard.md`):
-- Per-reviewer composite scores at acceptance
+**Combined scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/<stage>-combined-scorecard.md`):
+- Per-reviewer composite scores at cascade end
 - Items recurring across iterations within one run
+- Any unresolved items from tier cleanup skips or CRITICAL-at-cap halts
 
-**Mirrored accepted-issues** (`paper-extension/<stage>-logs/accepted-issues.md`):
-- What the user knowingly shipped with. Recurring acceptances may indicate over-flagging.
-
-**Cascade logs** (`docs/reviews/<artifact>-<ts>/`):
-- Only when you need detail the mirrored scorecard doesn't provide.
+**Per-iteration merged scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/reviewer-logs/tier[T]-iter[N]-merged.md`):
+- Use when you need detail the combined scorecard doesn't provide (e.g. tracing which iteration first surfaced an issue).
 
 ### 4. Cluster recurring issues
 
@@ -124,7 +122,7 @@ Group findings. Example cluster types:
 - **Iteration cap hits**: "Extend stage required ≥4 iterations on N/M runs." → extension-proposer struggles to clear the bar.
 - **Score floor patterns**: "Reviewer X's first-iteration scores cluster at 78-83." → creator instruction gap.
 - **Repeated CRITICAL types**: "Hallucinated content (factual) on N/M runs." → highest-priority signal.
-- **Acceptance patterns**: "Items in 'X category' appear in accepted-issues.md on N/M runs." → reviewer flags things the user doesn't want fixed → calibration target in the preferences file.
+- **Persistent unresolved items**: "Items in 'X category' appear unresolved at cascade end on N/M runs." → the fixer repeatedly couldn't apply them, or the reviewer keeps re-flagging the same underlying thing → calibration target in the preferences file.
 - **Oscillation patterns**: score up-then-down → creator overshoots.
 
 For each cluster, record: description, evidence (specific scorecard paths + iteration numbers), frequency (N/M runs), confidence (explicit qualifier: "1 of 1 — low confidence", "3 of 3 — strong signal").
@@ -152,14 +150,14 @@ For each cluster, one entry:
 
 Order by frequency (highest first), then by severity (CRITICAL recurrence first within the same frequency tier). Prefix shared-scope titles with `[SHARED]`.
 
-**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/<style>.md` — those are the tuning knobs by design.
+**Preferences files are the easiest target for most calibration proposals.** If you want to tune severity thresholds, scoring weights, or what-to-flag lists, propose edits to `${CLAUDE_PLUGIN_ROOT}/preferences/<style>.md` — those are the tuning knobs by design.
 
 ### 6. Generate proposed replacement files
 
 For each proposal whose `Touches` list includes specific files, **copy the live file as a starting point and edit the copy**. Never edit the live file.
 
 ```bash
-cp "${HOME}/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md" \
+cp "${CLAUDE_PLUGIN_ROOT}/preferences/writing-style.md" \
    "${HOME}/.paper-extensions-meta/${TIMESTAMP}/CASM-tools/preferences/writing-style.md"
 ```
 
@@ -167,7 +165,7 @@ Then edit the copy. Each output is a **full standalone replacement** — the use
 
 ```bash
 diff ~/.paper-extensions-meta/.../CASM-tools/preferences/writing-style.md \
-     ~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md
+     ${CLAUDE_PLUGIN_ROOT}/preferences/writing-style.md
 ```
 
 Mirror the live layout under a single `CASM-tools/` subdir:

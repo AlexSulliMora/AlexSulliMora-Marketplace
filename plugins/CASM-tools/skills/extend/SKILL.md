@@ -36,7 +36,9 @@ Check the PDF and `paper-extension/summary.md` both exist. Create `paper-extensi
 
 ### 2. Preprocess paper (auto)
 
-Invoke `CASM-tools:preprocess` via the Skill tool. Proceed regardless of outcome.
+If `paper-extension/paper.md` already exists (from a prior summarize or preprocess run on this paper), **skip this step entirely** — do not invoke preprocess. The downstream extension-proposer will read the existing `paper.md` cache, and re-prompting the user about preprocessing would be redundant.
+
+If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet. Proceed regardless of outcome.
 
 ### 3. Initial draft from extension-proposer
 
@@ -61,21 +63,23 @@ The extension-proposer may pause to request supplementary papers. When it does:
 
 ### 5. Hand off to /CASM-tools:review-document
 
-Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on `paper-extension/extensions.md`:
+Build the cascade logs directory path using the current timestamp (24-hour PST, `YY-MM-DDTHH-MM`):
 
 ```
-args: "all paper-extension/extensions.md"
+LOGS_DIR="paper-extension/extensions-logs/extensions-<YY-MM-DDTHH-MM>"
 ```
 
-The cascade handles iteration and the User Review Checkpoint, installing the final accepted version at `paper-extension/extensions.md`.
+Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on `paper-extension/extensions.md` and the `into <dir>` clause:
 
-### 6. Mirror cascade artifacts for meta-review
-
-```bash
-CASCADE_DIR="docs/reviews/extensions-<timestamp>"
-cp "$CASCADE_DIR/combined-scorecard.md" paper-extension/extensions-logs/extensions-scorecard.md 2>/dev/null || true
-cp "$CASCADE_DIR/accepted-issues.md"    paper-extension/extensions-logs/accepted-issues.md       2>/dev/null || true
 ```
+args: "all paper-extension/extensions.md into paper-extension/extensions-logs/extensions-<YY-MM-DDTHH-MM>"
+```
+
+The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/extensions.md` automatically (no interactive checkpoint). All cascade artifacts land inside the named logs directory.
+
+### 6. (Removed — no mirroring needed)
+
+The cascade already writes into the named logs directory; meta-review reads directly from there.
 
 ### 7. Finalize
 
@@ -85,7 +89,7 @@ Report to the user:
 
 ```
 Extensions finalized: paper-extension/extensions.md
-Cascade logs: docs/reviews/extensions-<timestamp>/
+Cascade logs: paper-extension/extensions-logs/extensions-<timestamp>/
 Final scores: [from cascade]
 Accepted outstanding items: [count]
 Supplementary papers requested: [N], provided: [M]
@@ -94,10 +98,8 @@ Supplementary papers requested: [N], provided: [M]
 ## Output
 
 - `paper-extension/extensions.md`
-- `paper-extension/extensions-logs/extensions-scorecard.md` (cascade mirror)
-- `paper-extension/extensions-logs/accepted-issues.md` (cascade mirror)
+- `paper-extension/extensions-logs/extensions-<timestamp>/` — full cascade trail (versions, reviewer-logs/, thorough/, extensions-final.md, extensions-combined-scorecard.md)
 - `paper-extension/session-logs/YYYY-MM-DD_extend.md`
-- `docs/reviews/extensions-<timestamp>/`
 
 ## Notes
 

@@ -1,7 +1,7 @@
 ---
 name: review-document
 description: |
-  Run the creator/reviewer tiered cascade on a deliverable artifact. Use when the user types /CASM-tools:review-document, says "review the [draft/slides/code/section]", asks for a full quality pass, or requests specific reviewers (writing, structure, math, code, simplicity, adversarial, presentation, consistency, factual, all, thorough) on a file or recently materialized inline text. The cascade operates on snapshots in the logs directory; the live file is never touched until the user's checkpoint decision.
+  Run the creator/reviewer tiered cascade on a deliverable artifact. Use when the user types /CASM-tools:review-document, says "review the [draft/slides/code/section]", asks for a full quality pass, or requests specific reviewers (writing, structure, math, code, simplicity, adversarial, presentation, consistency, factual, all, thorough) on a file or recently materialized inline text. The cascade operates on snapshots in the logs directory; the live file is untouched until the cascade finishes, at which point the final version is installed automatically.
 argument-hint: "[scope phrase] [paths]"
 disable-model-invocation: true
 allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
@@ -9,7 +9,7 @@ allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 
 # /CASM-tools:review-document
 
-Run the creator/reviewer tiered cascade on a named artifact. Groups selected reviewers into scope tiers, dispatches each tier in parallel after the previous tier converges (or hits its cap), auto-applies any remaining MAJOR/MINOR items, optionally runs a thorough audit pass, and raises a mandatory user checkpoint before the live file is modified.
+Run the creator/reviewer tiered cascade on a named artifact. Groups selected reviewers into scope tiers, dispatches each tier in parallel after the previous tier converges (or hits its cap), applies any remaining MAJOR/MINOR items via a per-tier cleanup fixer dispatch, optionally runs a thorough audit pass, and installs the final version at the live path automatically. No interactive checkpoint — the cascade is deterministic. The user's override path is a shell `cp` from the logs directory.
 
 This skill is the user-facing surface. The tier definitions live in `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md`; the state machine lives in `${CLAUDE_PLUGIN_ROOT}/scripts/loop-engine.md`; the reviewer protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-common.md`; the cascade and checkpoint protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md`. Read those for details not covered here.
 
@@ -30,7 +30,7 @@ See "Examples" below for concrete walkthroughs. Invoking `/CASM-tools:review-doc
 
 ## Argument parsing
 
-Parse `$ARGUMENTS` in this order. The grammar is closed: no flags, only paths and scope tokens. Filler words (`the`, `for`, `only`, `just`, `on`, `against`, `a`) are stripped.
+Parse `$ARGUMENTS` in this order. The grammar is closed: no flags, only paths, scope tokens, and an optional `into <dir>` clause. Filler words (`the`, `for`, `only`, `just`, `on`, `against`, `a`) are stripped.
 
 ### 1. Extract path tokens
 
@@ -41,6 +41,14 @@ Any token that matches one of the following is a path:
 - The basename of a file in `state/inline/`.
 
 Collect paths into the target list. If multiple paths are provided, dispatch reviewers that support multi-artifact input (consistency-reviewer) on the set; other reviewers run once per artifact.
+
+### 1a. Extract `into <dir>` clause (optional)
+
+If the arguments contain the two-token sequence `into <dir>`, the `<dir>` token sets `logs_dir` for this cascade and overrides the default location. The directory is created if it does not exist. The pipeline skills (`summarize`, `extend`, `present`) use this to route cascade output into their own per-paper log folders.
+
+- `<dir>` can be an absolute path or a path relative to the session cwd.
+- If `<dir>` already contains a `REVIEW_SUSPENDED.md`, the cascade auto-resumes from it (same semantics as the default-location resume).
+- Only one `into <dir>` clause is permitted per invocation.
 
 ### 2. Scope tokens (closed grammar)
 
@@ -58,7 +66,7 @@ Remaining tokens form the scope phrase. Each token matches one of these:
 | `consistency` | dispatch `consistency-reviewer` |
 | `factual` | dispatch `factual-reviewer` |
 | `all` | dispatch every reviewer, including factual |
-| `thorough` | run a final audit pass after auto-apply (see Thorough audit below); combines with any other scope tokens |
+| `thorough` | run a final audit pass after all tiers finish (see Thorough audit below); combines with any other scope tokens |
 
 Unknown tokens trigger "did you mean" clarification. Example: `/CASM-tools:review-document for correctness and speed` → "Unknown scope tokens: 'correctness', 'speed'. Did you mean `code` or `simplicity`?"
 
@@ -92,7 +100,7 @@ cascade: <artifact-path>
   tier 3 (pruning):    <tier-3 reviewers applicable>
   tier 4 (text):       <tier-4 reviewers applicable>
   tier 5 (adversarial):<tier-5 reviewers applicable>
-  auto-apply: ON (default)
+  tier-cleanup: ON (automatic)
   thorough audit: ON (requested)   <-- only if `thorough` token present
 ```
 
@@ -142,43 +150,45 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 - Load tier assignments from `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md`.
 - Announce reviewer selection grouped by tier (above).
 - Call the loop-engine state machine with the artifact path, reviewer list, tier assignment, logs directory, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns.
-- Render the user checkpoint when the engine returns a terminal state.
-- Dispatch the checkpoint decision back into the engine.
+- Print the terminal report (see `orchestrate-review.md` § Finalization) when the engine returns. No interactive checkpoint — the engine has already installed the final version at the live path.
 
 ### Key cascade behaviors
 
-- **The live file is never modified during the cascade.** Baseline snapshot is `<logs_dir>/<artifact>-v1.md`. Every revision writes a new version (v2, v3, ...). Reviewers always read the latest snapshot.
+- **The live file is not modified during the cascade.** Baseline snapshot is `<logs_dir>/<artifact>-v1.md`. Every revision writes a new version (v2, v3, ...). Reviewers always read the latest snapshot. At cascade end, the final version is installed at the live path automatically.
 - Tiers run sequentially; reviewers within a tier run in parallel.
 - Each tier iterates to convergence (composite ≥ 90 AND zero CRITICAL for every in-tier reviewer) or hits its 3-iteration cap.
-- After tiers complete, auto-apply runs by default: gathers remaining MAJOR/MINOR items, revises, re-reviews in parallel. Up to 3 rounds.
+- Each tier's inner loop ends with a tier-cleanup fixer dispatch that applies any remaining MAJOR/MINOR items before the next tier runs.
 - If `thorough` was requested, run a final parallel audit pass against the final proposed version. Results save to `<logs_dir>/thorough/`. No fixes applied.
-- Revision between iterations is written by the main session directly.
+- **Revisions are produced by the `fixer` agent, not by the main session.** The orchestrator passes (source_path, target_path, scorecard_path) and the fixer applies every item in the scorecard. No mode flag. See `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`.
+- Reviewers are always dispatched fresh per iteration (new Agent call, not a SendMessage to a reused reviewer) to avoid anchoring bias.
 - Scorecard parse validation is strict (see loop-engine.md).
 
 ### Logs directory
 
-Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/`, repo-root-relative. See `orchestrate-review.md` for the naming rules (24-hour PST, collision suffixes, lexicographic-sort property).
+Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/`, repo-root-relative. Override with the `into <dir>` clause. See `orchestrate-review.md` for the naming rules (24-hour PST, collision suffixes, lexicographic-sort property) and the internal layout (`reviewer-logs/`, `thorough/`, versioned snapshots, `-final.md`, `-combined-scorecard.md`).
 
 ## Thorough audit
 
-When the user includes `thorough` in the scope phrase, the engine runs an additional parallel audit pass after the auto-apply phase converges or caps out. The audit:
+When the user includes `thorough` in the scope phrase, the engine runs an additional parallel audit pass after all tiers (and their cleanup passes) complete. The audit:
 
 - Dispatches every originally-selected reviewer once more in parallel against the final proposed version.
 - Saves scorecards to `<logs_dir>/thorough/<reviewer>-thorough.md`.
 - Merges into `<logs_dir>/thorough/combined-scorecard.md`.
 - **Does not apply any findings.** Items raised in the audit are purely informational: they tell the user whether the cascade actually converged or whether the reviewers would keep flagging issues given another turn.
 
-The checkpoint displays a brief summary of the audit with a pointer to the combined audit scorecard.
+The terminal report includes a brief summary of the audit with a pointer to the combined audit scorecard.
 
-## User checkpoint
+## Finalization
 
-Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md` § "User Review Checkpoint". Five action verbs: `accept`, `use <N>`, `keep original`, `fix <numbers>`, `show <number>`. Parse the user's reply against exact verb match; unknown replies trigger re-prompt.
+When the engine finishes, it installs the final version at the live path and prints a terminal report (cascade summary, final scores, thorough audit summary if any, pointer to the logs directory). There is no interactive checkpoint.
 
-- `accept` → install `<logs_dir>/<artifact>-v[final].md` as the new live file. Write `<logs_dir>/accepted-issues.md`. Release lock.
-- `use <N>` → install `<logs_dir>/<artifact>-v<N>.md` as the new live file. Write accepted-issues.md. Release lock.
-- `keep original` → live file untouched. Write accepted-issues.md noting the user declined. Release lock.
-- `fix <numbers>` → build `<logs_dir>/surgical-fix-v[N+1]-request.md`, main session revises the latest snapshot, re-run ALL originally-dispatched reviewers in parallel (not tiered), re-present checkpoint.
-- `show <number>` → print full scorecard entry, re-present options.
+If the user wants a different version installed, they copy it manually:
+
+```bash
+cp <logs_dir>/<artifact>-v3.md <artifact_path>
+```
+
+If the user consistently disagrees with what gets flagged, the right fix is to edit the reviewer's preferences file at `${CLAUDE_PLUGIN_ROOT}/preferences/<reviewer>-style.md`, not to override individual runs. Calibration through preferences is durable and shared across future cascades.
 
 ## Failure modes
 
@@ -186,10 +196,11 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
 |---|---|
 | Scorecard parse failure (first time) | Re-dispatch that reviewer once. |
 | Scorecard parse failure (second time) | Mark "failed to parse", exclude from composite, flag to user, continue. |
-| Main session revision returns empty / refusal | Retry once with refusal text prepended. If still empty, surface and halt cascade. |
+| Fixer returns empty / refusal | Retry once with refusal text prepended. If still empty, surface and halt cascade. |
+| Fixer writes outside its `target_path` | Treat as error; revert the extra write and halt. |
 | External edit to live file during cascade | Halt with prompt: "live file edited externally — restart, continue from current snapshot, or abort?" |
-| Tier cap hit with CRITICAL remaining, user AFK | Write `REVIEW_SUSPENDED.md`, release lock. Next invocation auto-resumes. |
-| Auto-apply cap hit with items remaining | Proceed to checkpoint with items in the combined scorecard as unresolved. User can `fix <n>` or accept. |
+| Tier cap hit with CRITICAL remaining | Escalate to the user (blocking prompt: continue / suspend / fix manually). If the user is AFK, write `REVIEW_SUSPENDED.md` and release lock; next invocation auto-resumes. |
+| Tier cleanup fixer skipped an item (row genuinely unapplicable) | Item stays in the combined scorecard as unresolved. Cascade still finalizes; the user can re-run `/review-document` after adjusting preferences or manually editing the live file. |
 | Concurrent `/CASM-tools:review-document` on same artifact | Rejected by lockfile. |
 | Unknown scope token | Print "Unknown scope tokens: ... Did you mean ...?" and halt. No silent best-guess. |
 | Preference-injection hook disabled or fails | Reviewers fall back to reading their preferences file directly via the pointer in the agent body. No cascade regression; preferences still reach the reviewer, just via a file read instead of the dispatch prompt. |
@@ -208,7 +219,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
    ```
    cascade: paper/slides.qmd
      tier 4 (text): writing-reviewer
-     auto-apply: ON (default)
+     tier-cleanup: ON (automatic)
    ```
 4. Acquire lock, enter cascade; the hook injects writing preferences into the writing-reviewer dispatch automatically. Present checkpoint.
 
@@ -225,7 +236,7 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
    cascade: analysis.py
      tier 2 (content):  code-reviewer
      tier 3 (pruning):  simplicity-reviewer
-     auto-apply: ON (default)
+     tier-cleanup: ON (automatic)
    ```
 
 ### Thorough audit
@@ -241,10 +252,10 @@ Render the checkpoint format from `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-rev
    cascade: paper.md
      tier 1 (shape): structure-reviewer
      tier 4 (text):  writing-reviewer
-     auto-apply: ON (default)
+     tier-cleanup: ON (automatic)
      thorough audit: ON (requested)
    ```
-4. After cascade + auto-apply, run one more parallel pass of structure + writing against the final snapshot; save to `<logs_dir>/thorough/`; no fixes.
+4. After all tiers (with cleanup) finish, run one more parallel pass of structure + writing against the final snapshot; save to `<logs_dir>/thorough/`; no fixes.
 
 ### All reviewers
 
@@ -270,9 +281,20 @@ User has just written a paragraph-long research idea in chat.
    ```
    cascade: state/inline/inline-2026-04-17T14-22.md
      tier 5 (adversarial): adversarial-reviewer
-     auto-apply: ON (default)
+     tier-cleanup: ON (automatic)
    ```
 4. Enter cascade.
+
+### Invocation with explicit logs directory
+
+```
+/CASM-tools:review-document all paper-extension/summary.md into paper-extension/summary-logs/summary-26-04-20T14-30
+```
+
+1. Path tokens: `paper-extension/summary.md`.
+2. `into <dir>`: sets `logs_dir = paper-extension/summary-logs/summary-26-04-20T14-30`. Directory is created if missing.
+3. Scope tokens: `all`.
+4. Cascade writes its version snapshots, `reviewer-logs/`, `thorough/`, final, and combined scorecard into the named directory rather than the default `docs/reviews/...` location. The pipeline skills invoke `/CASM-tools:review-document` this way so cascade artifacts live beside the paper-extension content.
 
 ### Resume a suspended review
 
@@ -286,9 +308,11 @@ If `<logs_dir>/REVIEW_SUSPENDED.md` exists (prior cascade halted with CRITICAL i
 
 - Do NOT dispatch reviewers across tiers in parallel. The cascade's purpose is to let each tier see the upstream tier's revisions already applied.
 - Do NOT dispatch reviewers within a single tier serially. Within a tier, reviewers are orthogonal and parallel is correct.
-- Do NOT modify the live file during the cascade. The live file is only replaced at the checkpoint on the user's terminal decision.
-- Do NOT re-run only the failing reviewer on a surgical fix. Surgical fixes re-run ALL originally-dispatched reviewers in parallel to catch regressions.
+- Do NOT modify the live file during the cascade. The live file is only replaced when the engine finalizes.
+- Do NOT write revisions from the main session. Revisions are produced by the `fixer` agent. Dispatching the fixer keeps the main session context clean of intermediate draft content.
+- Do NOT reuse a reviewer agent across iterations via SendMessage. Each iteration dispatches a fresh reviewer Agent call so scoring does not anchor on prior scores.
+- Do NOT pass a `mode` flag to the fixer. The fixer has one behavior: apply every item in the scorecard exactly. The scorecard supplies the instruction.
 - Do NOT apply items from the thorough audit pass. The audit is informational only.
 - Do NOT silently guess at an unknown scope token. The closed grammar is enforced so unparseable input fails loudly.
-- Do NOT skip the user checkpoint even when every phase converges cleanly. The checkpoint is mandatory; it is the only point at which the live file can be modified.
+- Do NOT reintroduce an interactive checkpoint. If the user consistently disagrees with what gets flagged, they update the relevant `<reviewer>-style.md` preferences file. Per-run overrides are a shell `cp` from the logs directory; the cascade itself does not negotiate.
 - Do NOT manually include preferences blocks in the reviewer dispatch prompt. The PreToolUse hook handles injection. If you paste preferences manually on top of the hook injection, the reviewer sees two copies.

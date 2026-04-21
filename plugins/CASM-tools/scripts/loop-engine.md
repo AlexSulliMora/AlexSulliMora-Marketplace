@@ -1,34 +1,53 @@
 # Loop engine
 
-This document specifies the state machine `/review-document` runs, extracted from the skill surface so the skill can own user interaction (parse, announce, render checkpoint) while the engine owns cascade mechanics (hash, dispatch, parse, aggregate, recover).
+This document specifies the state machine `/review-document` runs. The skill owns user-facing announcements and final reporting. The engine owns cascade mechanics (hash, dispatch, parse, aggregate, recover). Revisions are produced by the `fixer` agent.
 
-Pair with `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md` for the user-facing protocol, `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md` for the scope hierarchy, and `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-common.md` for the scorecard contract.
+Pair with `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md` for the end-to-end protocol, `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md` for the scope hierarchy, and `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-common.md` for the scorecard contract.
 
-The cascade never modifies the live file at `artifact_path`. The live file is snapshotted to `v1` at the start and left alone until the user's checkpoint decision installs some version (possibly `v1`, possibly a later one, possibly nothing). Reviewers always read the latest snapshot from `logs_dir`. Revisions are written by the main session to new versioned snapshots.
+The cascade does not modify the live file at `artifact_path` during the loop. The live file is snapshotted to `v1` at start and left untouched until the cascade finishes, at which point the final proposed version is installed at the live path. Reviewers always read the latest snapshot from `logs_dir`. Revisions are written by the `fixer` agent to new versioned snapshots.
 
 ## Inputs
 
 - `artifact_path` — absolute path to the live file under review.
 - `reviewer_list` — list of agent names to dispatch (e.g. `["writing-reviewer", "code-reviewer"]`).
 - `tier_assignment` — map from reviewer name to tier number, loaded from `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md`.
-- `logs_dir` — path to the review logs directory. Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/` relative to the repo root, where time is 24-hour PST. See `orchestrate-review.md` for the full naming rule.
-- `thorough` — boolean. When true, the engine runs a final parallel audit pass after auto-apply, saving results to `logs_dir/thorough/` without applying any findings.
+- `logs_dir` — path to the review logs directory. Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/` relative to the repo root, where time is 24-hour PST. May be overridden by the caller (e.g. the pipeline skills pass their own log folders via the `into <dir>` token). See `orchestrate-review.md` for the full naming rule.
+- `thorough` — boolean. When true, the engine runs a final parallel audit pass after all tiers finish, saving results to `logs_dir/thorough/` without applying any findings.
 - `session_id` — from hook context; recorded in the lock and session log.
+
+## Directory layout inside `logs_dir`
+
+```
+<logs_dir>/
+├── <artifact>-final.md                 (copy of the installed version, written at cascade end)
+├── <artifact>-v1.md                    (baseline snapshot of the live file)
+├── <artifact>-v2.md                    (each revision increments the version)
+├── <artifact>-v3.md
+├── ...
+├── <artifact>-combined-scorecard.md    (written once at cascade end)
+├── tier[T]-cleanup-request.md          (one per tier that exits with remaining MAJOR/MINOR)
+├── reviewer-logs/
+│   ├── tier[T]-iter[N]-<reviewer>.md   (individual reviewer scorecards per tier iteration)
+│   └── tier[T]-iter[N]-merged.md       (per-iteration merged tier scorecard — input to the fixer)
+└── thorough/
+    ├── <reviewer>-thorough.md          (only if `thorough=true`)
+    └── combined-scorecard.md
+```
+
+`REVIEW_SUSPENDED.md` is written at the top level of `logs_dir` if the cascade is halted for resumption.
 
 ## State
 
 | Field | Purpose |
 |---|---|
-| `phase` | `tier` / `auto_apply` / `thorough` / `checkpoint`. |
+| `phase` | `tier` / `thorough` / `finalize`. |
 | `tier` | Current tier number (1..5). Only meaningful during the `tier` phase. |
 | `iteration` | Current in-tier iteration (1..3). Resets at each new tier. |
-| `apply_round` | Current auto-apply round (1..3). Only meaningful during `auto_apply`. |
 | `version` | Monotonic snapshot version. `v1` is the baseline (live file at cascade start); every revision increments by 1. |
 | `current_snapshot_path` | `logs_dir/[artifact]-v[version].md`. Reviewers read this. |
 | `live_file_hash` | SHA256 of the live file at cascade start. If it changes during the cascade, halt with an external-edit warning. |
 | `lockfile_path` | `state/locks/<artifact_hash_at_acquire>.lock`. |
-| `tier_scorecard_paths` | Map: tier number → `logs_dir/tier[T]-iter[N]-scorecard.md` for the last iteration of that tier. |
-| `apply_scorecard_paths` | List: round number → `logs_dir/apply[R]-scorecard.md`. |
+| `tier_scorecard_paths` | Map: tier number → `logs_dir/reviewer-logs/tier[T]-iter[N]-merged.md` for the last iteration of that tier. |
 | `thorough_scorecard_path` | `logs_dir/thorough/combined-scorecard.md` (only if `thorough=true`). |
 | `combined_scorecard_path` | `logs_dir/[artifact]-combined-scorecard.md`. Written once at cascade end. |
 | `reviewer_parse_failures` | Set of reviewer names whose scorecards failed to parse (excluded after one retry). |
@@ -44,11 +63,16 @@ The cascade never modifies the live file at `artifact_path`. The live file is sn
 
 3. tier_assignment = load_tiers(${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-tiers.md)
 
-4. Snapshot baseline:
-     live_file_hash = sha256(artifact_path)
-     copy artifact_path → logs_dir/[artifact]-v1.md
-     version = 1
-     current_snapshot_path = logs_dir/[artifact]-v1.md
+4. Snapshot baseline (only on fresh start — skipped on resume):
+     mkdir -p logs_dir/reviewer-logs
+     if logs_dir/[artifact]-v1.md already exists (resume case): do NOT overwrite. v1 is the immutable original, captured on the cascade's first run. Just restore `live_file_hash` and `current_snapshot_path` from the suspended state.
+     else (fresh case):
+       live_file_hash = sha256(artifact_path)
+       copy artifact_path → logs_dir/[artifact]-v1.md
+       version = 1
+       current_snapshot_path = logs_dir/[artifact]-v1.md
+
+**v1 is write-once.** After it is written on the cascade's first start, nothing in the engine ever writes to that path again. The fixer's `target_path` is always `v[next]`; reviewers never write to version paths at all; resume is read-only against v1. If the user wants to always retrieve the original, v1 in the logs directory is the canonical record.
 
 5. Tier cascade:
      for tier in 1..5:
@@ -59,78 +83,84 @@ The cascade never modifies the live file at `artifact_path`. The live file is sn
             i.   If sha256(artifact_path) != live_file_hash:
                    halt("live file edited externally during cascade. options: restart, continue from current snapshot, abort")
             ii.  Dispatch all `applicable` in parallel against `current_snapshot_path`.
-                 Each reviewer writes logs_dir/[reviewer]-tier[tier]-iter[iteration].md.
+                 Each reviewer writes logs_dir/reviewer-logs/tier[tier]-iter[iteration]-[reviewer].md.
+                 Each dispatch is a fresh Agent call (not a SendMessage to a reused reviewer) to avoid anchoring bias.
             iii. Collect scorecards, validate, handle parse failures per Recovery actions.
-            iv.  Merge → logs_dir/tier[tier]-iter[iteration]-scorecard.md.
+            iv.  Merge → logs_dir/reviewer-logs/tier[tier]-iter[iteration]-merged.md.
             v.   Update session log.
             vi.  If every reviewer in `applicable` passes (composite ≥ 90 AND zero CRITICAL):
-                   tier_scorecard_paths[tier] = current path
+                   tier_scorecard_paths[tier] = current merged path
                    break inner loop
             vii. If iteration == 3:
-                   tier_scorecard_paths[tier] = current path
+                   tier_scorecard_paths[tier] = current merged path
                    if any CRITICAL remains:
                      halt_cascade_and_checkpoint(reason="tier [tier] exhausted cap with CRITICAL items")
                    else:
-                     break inner loop  # MAJOR/MINOR propagate to auto-apply
-            viii. Main session revises `current_snapshot_path` using the tier's merged scorecard → logs_dir/[artifact]-v[version+1].md.
-                  version += 1
-                  current_snapshot_path = logs_dir/[artifact]-v[version].md
-                  if revision is empty or refused: retry once with refusal text prepended. If still empty, halt.
+                     break inner loop  # MAJOR/MINOR handled by the cleanup step below
+            viii. Dispatch `fixer` agent to apply the tier's merged scorecard:
+                  - source_path = current_snapshot_path
+                  - target_path = logs_dir/[artifact]-v[version+1].md
+                  - scorecard_path = logs_dir/reviewer-logs/tier[tier]-iter[iteration]-merged.md
+                  After the fixer returns:
+                    version += 1
+                    current_snapshot_path = logs_dir/[artifact]-v[version].md
+                  If the fixer returns empty or refuses: retry once with the refusal text prepended to its prompt. If still empty, halt.
             ix.  continue inner loop
 
-       d. end of tier
+       d. Tier cleanup (post-inner-loop, pre-advance):
+            i.   outstanding = MAJOR/MINOR items in tier_scorecard_paths[tier] (CRITICAL must already be zero to reach here).
+            ii.  If outstanding is empty: continue to next tier.
+            iii. Write logs_dir/tier[tier]-cleanup-request.md with every item in `outstanding`, prefixed with the standard surgical-fix instruction.
+            iv.  Dispatch `fixer`:
+                   - source_path = current_snapshot_path
+                   - target_path = logs_dir/[artifact]-v[version+1].md
+                   - scorecard_path = logs_dir/tier[tier]-cleanup-request.md
+                 After the fixer returns:
+                   version += 1
+                   current_snapshot_path = logs_dir/[artifact]-v[version].md
+            v.   No re-review within this tier. The next tier reads the revised snapshot; its reviewers catch any regression introduced by the cleanup fixer.
 
-6. Auto-apply phase:
-     a. outstanding = collect_major_and_minor_items(tier_scorecard_paths)
-     b. if outstanding is empty: skip to step 7
+       e. end of tier
 
-     c. for apply_round in 1..3:
-          i.   Write logs_dir/surgical-fix-v[version+1]-request.md containing every item in `outstanding`, prefixed with the standard surgical-fix instruction.
-          ii.  Main session revises `current_snapshot_path` addressing all items → logs_dir/[artifact]-v[version+1].md.
-               version += 1
-               current_snapshot_path = logs_dir/[artifact]-v[version].md
-          iii. Dispatch ALL originally-dispatched reviewers in parallel against `current_snapshot_path` (not tiered).
-               Each reviewer writes logs_dir/[reviewer]-apply[apply_round].md.
-          iv.  Merge → logs_dir/apply[apply_round]-scorecard.md.
-          v.   apply_scorecard_paths[apply_round] = current path.
-          vi.  If every reviewer passes AND no MAJOR or MINOR items remain:
-                 break  # auto-apply converged
-          vii. Else outstanding = new items from this round's scorecards; continue.
-
-     d. If apply_round == 3 with items remaining: note in combined scorecard; items propagate to checkpoint.
-
-7. Thorough phase (only if `thorough=true`):
+6. Thorough phase (only if `thorough=true`):
      a. mkdir logs_dir/thorough/
      b. Dispatch ALL originally-dispatched reviewers in parallel against `current_snapshot_path`.
         Each reviewer writes logs_dir/thorough/[reviewer]-thorough.md.
      c. Merge → logs_dir/thorough/combined-scorecard.md.
      d. **Do not apply any findings.** The thorough pass is a convergence audit only.
 
-8. Write logs_dir/[artifact]-combined-scorecard.md:
+7. Write logs_dir/[artifact]-combined-scorecard.md:
      - Cascade summary table (phase, reviewers, converged, final iteration, CRITICAL/MAJOR/MINOR, version produced).
      - Version trail.
-     - Per-tier final scorecards.
-     - Auto-apply round summaries.
+     - Per-tier final scorecards (pulled from logs_dir/reviewer-logs/tier[T]-iter[N]-merged.md).
+     - Tier cleanup rounds (if any).
      - Thorough audit section (if ran): brief summary + pointer to logs_dir/thorough/combined-scorecard.md.
 
-9. user_checkpoint(state):
-     Render cascade summary, version trail, final scores, thorough audit (if any), and unresolved items (if any).
-     Options:
-       - `accept` → install current_snapshot_path at artifact_path, write accepted-issues.md, release_lock(), return ACCEPTED.
-       - `use <N>` → install logs_dir/[artifact]-v<N>.md at artifact_path, write accepted-issues.md, release_lock(), return USE_N.
-       - `keep original` → leave artifact_path untouched, write accepted-issues.md, release_lock(), return KEEP_ORIGINAL.
-       - `fix <n>` → construct surgical-fix-request → main session revises `current_snapshot_path` → save new version → re-dispatch all originally dispatched reviewers in parallel → re-render checkpoint.
-       - `show <n>` → print entry, re-render options, no state change.
+8. Finalize:
+     a. copy current_snapshot_path → logs_dir/[artifact]-final.md
+     b. copy current_snapshot_path over artifact_path (install the final version at the live path)
+     c. Report to the user: final version number, final scores, cascade summary, logs_dir path. If the user wants an earlier version installed instead, they copy it from logs_dir manually.
+     d. release_lock()
+     e. return DONE.
 
-10. Cap exhaustion with CRITICAL remaining AND user not present:
-      write logs_dir/REVIEW_SUSPENDED.md with full state (phase, tier or apply_round, version, reviewer_list, thorough flag).
+9. Cap exhaustion with CRITICAL remaining:
+      write logs_dir/REVIEW_SUSPENDED.md with full state (phase, tier, iteration, version, reviewer_list, thorough flag, logs_dir).
+      Escalate to the user with a blocking prompt: continue the halted tier, suspend, or fix manually. This is an error-path escalation, not a routine checkpoint — it only fires when a CRITICAL-severity item could not be driven to zero within the per-tier cap.
       release_lock()
       On next `/review-document` invocation for this artifact, the skill detects the suspended file and auto-resumes.
-
-11. release_lock()
 ```
 
 The sections below enumerate the error conditions, validation rules, utilities, and data formats referenced by the cascade above.
+
+## Fixer dispatch contract
+
+Every fixer dispatch passes these three paths in the prompt (plain prose, not JSON — the agent parses the task description):
+
+- `source_path` — absolute path to the version the fixer must read.
+- `target_path` — absolute path where the next version must be written. The fixer owns this file.
+- `scorecard_path` — absolute path to the merged tier scorecard (during iteration) or the tier-cleanup request (between tiers).
+
+There is no `mode` field. The fixer always applies every item in the scorecard exactly; the scorecard itself carries the full instruction. The fixer must never write anywhere except `target_path`. See `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md` for the full contract.
 
 ## Recovery actions
 
@@ -140,9 +170,9 @@ The sections below enumerate the error conditions, validation rules, utilities, 
 | External edit to live file during cascade (hash mismatch) | Halt with user prompt: "live file edited externally — restart, continue from current snapshot, or abort?" |
 | Reviewer scorecard parse failure (first time) | Re-dispatch that reviewer once with the same input. |
 | Reviewer scorecard parse failure (second time) | Mark reviewer "failed to parse", exclude from phase composite, flag to user, continue. |
-| Main session revision returns empty/refusal | Retry once with refusal reason prepended. If still empty, surface to user and halt. |
-| Tier cap hit with CRITICAL remaining | Halt cascade, suspend or checkpoint. User decides whether to continue the halted tier, skip to auto-apply anyway, or fix manually. |
-| Auto-apply cap hit with items remaining | Proceed to checkpoint with items in the combined scorecard as "unresolved in final proposed version." User can `fix <n>` at the checkpoint. |
+| Fixer returns empty/refusal | Retry once with refusal reason prepended. If still empty, surface to user and halt. |
+| Fixer writes to a path other than `target_path` | Treat the extra write as an error. Revert the extra write (from git or the pre-dispatch state) and halt. |
+| Tier cap hit with CRITICAL remaining | Halt cascade, suspend or checkpoint. User decides whether to continue the halted tier, skip to the next tier anyway, or fix manually. |
 | Loop crashes mid-iteration | Lockfile TTL is advisory (OS lock drops on process death). On next invocation, if lockfile exists but flock succeeds, treat as stale and resume from last saved state. |
 
 ## Parse validation
@@ -186,20 +216,18 @@ artifact_hash: sha256:deadbeef...
 
 The OS flock is the enforcement primitive. The file contents are diagnostic only: a future `/review-document` invocation on the same artifact reads them to report what is blocking.
 
-## Surgical fix request format
+## Tier cleanup request format
 
-When the user selects `fix <numbers>` at a checkpoint:
+After a tier's inner loop exits (convergence or cap without CRITICAL), remaining MAJOR/MINOR items are written to `logs_dir/tier[T]-cleanup-request.md` and dispatched to the fixer before the next tier runs.
 
 ```markdown
-# Surgical fix request — [artifact] — v[N+1]
+# Tier [T] cleanup request — [artifact] — v[N+1]
 
-**Instruction:** The user has asked you to address ONLY the items below. Do not re-touch unrelated content. Do not introduce changes beyond what is requested. Preserve everything else in the current version exactly as-is.
+**Instruction:** Apply every item below exactly as the Fix cell specifies. Preserve everything else in the current version byte-for-byte.
 
 ## Items to fix
 
 | # | Severity | Location | Issue | Source citation | Fix |
 |---|---|---|---|---|---|
-| [copied verbatim from the combined scorecard, preserving row order] | | | | | |
+| [copied verbatim from the last tier scorecard's remaining MAJOR/MINOR rows] | | | | | |
 ```
-
-This file is written to `logs_dir/surgical-fix-v[N+1]-request.md` and passed to the main session as input for direct revision.

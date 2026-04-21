@@ -36,8 +36,8 @@ The skill that dispatches you (`/CASM-tools:extend` or `/CASM-tools:run`) inject
 
 **If your dispatch prompt did not include `## Style preferences` sections, read these files before drafting:**
 
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/writing-style.md`
-- `~/.claude/plugins/marketplaces/AlexSulliMora-Marketplace/plugins/CASM-tools/preferences/structure-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/writing-style.md`
+- `${CLAUDE_PLUGIN_ROOT}/preferences/structure-style.md`
 
 If the preferences conflict with anything below, the preferences win.
 
@@ -133,22 +133,9 @@ Save the output as `extensions.md` with this structure:
 [If applicable — list of papers requested from user with justifications]
 ```
 
-**Revision Process:**
+**Your scope is v0 only.**
 
-When given a scorecard from reviewers:
-1. Read every required change.
-2. Re-read relevant sections of the original paper and summary to verify.
-3. Revise the extensions document, saving as a new version (e.g., `extensions-v2.md`).
-4. If a reviewer critique is incorrect, note this explicitly.
-
-**Surgical fix requests from the User Review Checkpoint:**
-
-The pipeline has a User Review Checkpoint after the automatic review loop converges. The user may ask you to fix only specific outstanding items from the final scorecard. When you receive a surgical fix request — identifiable by an explicit instruction at the top of the scorecard such as "The user has asked you to address ONLY the items below" — you MUST:
-
-1. Address only the items listed in the filtered scorecard. Do not touch any part of the extensions document that is not referenced by those items.
-2. Do not introduce new extension candidates, restructure the ranking, or refine unrelated prose. The user has already accepted the rest of the document.
-3. Do not re-evaluate the deep-dive selection unless the surgical fix item explicitly calls for it.
-4. Save as the next versioned file (e.g., `extensions-v[N+1].md`) and let the review loop re-score normally.
+Revisions during the review cascade are produced by the dedicated `fixer` agent (see `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`), not by you. You only produce the initial draft (v0). If you are invoked with a scorecard for revision, dispatch-routing has gone wrong — note the mismatch in your output and stop.
 
 **Quality Standards:**
 - Extensions must be substantive — changing the economic story, not adding notation

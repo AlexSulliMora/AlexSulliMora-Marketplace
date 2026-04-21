@@ -35,23 +35,16 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 ### Tier [T] — Iteration [N+1]
 [Same format: add new sections as iterations proceed]
 
-## User Review Checkpoints
+## Finalization
 
-[Update after each checkpoint. Do not batch. Write entries as they happen. Surgical fixes produce additional checkpoints; log every occurrence.]
-
-### Checkpoint 1
-- **Timestamp (opened):** [HH:MM UTC]
-- **Timestamp (decided):** [HH:MM UTC, or "abandoned" if no decision within 48h]
-- **Triggered by:** [auto-convergence at iteration N / iteration cap reached]
-- **Scores at checkpoint:** [per-reviewer composite scores]
-- **Items presented:** [count of MAJOR + MINOR items]
-- **User decision:** [`accept` / `use <N>` / `keep original` / `fix 1,3,7` / sequence of `show` commands before deciding / `abandoned`]
-- **Action:** [proceeded to Finalize / started surgical fix iteration v[N+1] / suspended]
-- **Accepted items recorded to:** [path to accepted-issues.md, if accepted]
-- **Installed version:** [v[N] copied to live file, or "none (keep original)"]
-
-### Checkpoint N
-[Same format: one entry per checkpoint presentation]
+- **Timestamp:** [HH:MM UTC when the cascade installed the final version]
+- **Final version:** [v[N] copied to live file]
+- **Final file:** [path to `<artifact>-final.md`]
+- **Combined scorecard:** [path to `<artifact>-combined-scorecard.md`]
+- **Final composite scores:** [per-reviewer composite at cascade end]
+- **Cascade converged:** [YES / NO — if NO, list which tiers hit their cap]
+- **Thorough audit run:** [yes/no; if yes, outstanding item count]
+- **User-interaction events:** [none, OR "CRITICAL escalation at tier T iter N — user chose X"]
 
 ## Design Decisions
 
@@ -78,7 +71,7 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 | Lockfile acquired cleanly | [yes/no] | [PASS/FAIL] |
 | All reviewers returned parseable scorecards | [details] | [PASS/FAIL] |
 | All reviewers >= 90 | [details] | [PASS/FAIL] |
-| Auto-apply converged | [yes/no; rounds used] | [PASS/FAIL] |
+| All tier cleanups applied | [yes/no; tiers cleaned] | [PASS/FAIL] |
 | Thorough audit run (if requested) | [yes/no / n/a] | [PASS/FAIL / n/a] |
 | User checkpoint accepted | [details; count of accepted items] | [PASS/FAIL] |
 

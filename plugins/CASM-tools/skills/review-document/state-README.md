@@ -80,11 +80,11 @@ The OS `flock` (POSIX) or `msvcrt.locking` (Windows) is the actual enforcement; 
 
 Two alternatives were considered:
 
-1. **Per-artifact colocated state.** Works for `accepted-issues.md` and review logs (which already live next to the artifact they describe), but session-wide state (registry, lockfiles) needs a single directory per project so cross-artifact lookup works.
+1. **Per-artifact colocated state.** Works for review logs and version snapshots (which already live next to the artifact they describe), but session-wide state (registry, lockfiles) needs a single directory per project so cross-artifact lookup works.
 2. **Centralized in `~/.claude/state/`.** Keeps state near the skill library, but forces cross-project pollution: one registry for every project you ever review, one lockfile namespace shared across projects that have nothing to do with each other.
 
-Per-project `state/` sits between the two. Artifact-scoped files (review logs, accepted-issues) stay colocated with the artifact; session-wide state (registry, lockfiles, inline materializations) goes under the project root's `state/`. Each project gets its own clean registry; lockfiles collide only when it is actually the same project.
+Per-project `state/` sits between the two. Artifact-scoped files (review logs, combined scorecards, versioned snapshots) stay colocated with the artifact; session-wide state (registry, lockfiles, inline materializations) goes under the project root's `state/`. Each project gets its own clean registry; lockfiles collide only when it is actually the same project.
 
 ## Cleanup
 
-Nothing here auto-expires. If the directory grows uncomfortably large, the registry bounds itself to the most recent 500 entries; old `inline/` files can be manually pruned once the related reviews have been accepted and logged to `accepted-issues.md`.
+Nothing here auto-expires. If the directory grows uncomfortably large, the registry bounds itself to the most recent 500 entries; old `inline/` files can be manually pruned once the related review cascades have finalized.
