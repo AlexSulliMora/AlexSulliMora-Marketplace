@@ -48,6 +48,8 @@ If `paper-extension/summary.md` already exists, confirm with the user before ove
 
 Invoke the `CASM-tools:preprocess` skill via the Skill tool, passing the absolute PDF path. The preprocess skill will ask the user whether to generate a markdown cache (reduces LLM token usage but takes 10–20 min on CPU) or skip straight to PDF reading. Either answer is acceptable — `paper-summarizer` falls back to the PDF when `paper.md` is absent.
 
+**When preprocess returns, continue immediately to step 3.** A cache hit, a freshly generated `paper.md`, or a skip-decision are all acceptable outcomes — none is a stopping point. Do not pause or report to the user until the full pipeline is complete.
+
 ### 3. Initial draft from paper-summarizer
 
 Dispatch the `paper-summarizer` agent via the Agent tool. Include in the dispatch prompt:
