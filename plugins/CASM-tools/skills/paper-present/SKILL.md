@@ -1,6 +1,6 @@
 ---
-name: present
-description: This skill creates a slide presentation and a companion writeup from a summarized/extended paper. Supports scope options ("summary only" for paper summary, "extension only" for extension deep-dive) and output formats (revealjs HTML default, ppt, pdf). Triggers on "create a presentation", "build slides", "present this paper", "/CASM-tools:present summary only", "/CASM-tools:present extension only", "/CASM-tools:present ppt", "/CASM-tools:present pdf".
+name: paper-present
+description: This skill creates a slide presentation and a companion writeup from a summarized/extended paper. Supports scope options ("summary only" for paper summary, "extension only" for extension deep-dive) and output formats (revealjs HTML default, ppt, pdf). Triggers on "create a presentation", "build slides", "present this paper", "/CASM-tools:paper-present summary only", "/CASM-tools:paper-present extension only", "/CASM-tools:paper-present ppt", "/CASM-tools:paper-present pdf".
 argument-hint: "<path-to-paper.pdf> [summary only | extension only] [ppt | pdf]"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
 ---
@@ -24,7 +24,7 @@ The post-cascade screenshot-based presentation-review pass (step 6 below) also r
 
 - A PDF file path must be provided as an argument
 - Finalized outputs must exist:
-  - `paper-extension/summary.md`
+  - `paper-extension/paper-summary.md`
   - `paper-extension/extensions.md` (required for full and extension-only scope; not for summary only)
 - Quarto must be installed and available on PATH (check with `quarto --version`)
 - For Revealjs: Node.js (`npx`) or `decktape` on PATH (for screenshot rendering)
@@ -61,7 +61,7 @@ paper-extension/writeup-logs/
 
 If `paper-extension/paper.md` already exists (from a prior summarize/extend/preprocess run on this paper), **skip this step entirely** — do not invoke preprocess. The presentation-builder will read the existing `paper.md` cache, and re-prompting the user about preprocessing would be redundant.
 
-If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
+If `paper.md` does NOT exist, invoke `CASM-tools:paper-preprocess` via the Skill tool. The paper-preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
 
 **When preprocess returns, continue immediately to step 3.** A cache hit, a freshly generated `paper.md`, a skip-decision, or the step being skipped entirely (because `paper.md` already existed) are all acceptable outcomes — none is a stopping point. Do not pause or report to the user until the full pipeline is complete.
 
@@ -71,7 +71,7 @@ Dispatch the `presentation-builder` agent via the Agent tool. Include:
 
 - The absolute PDF path
 - The `paper-extension/paper.md` path (if it exists)
-- Paths to `summary.md` and (if applicable) `extensions.md`
+- Paths to `paper-summary.md` and (if applicable) `extensions.md`
 - The **scope** option (full / summary only / extension only)
 - The **format** option (revealjs / pptx / beamer)
 - Instruction to write drafts to `paper-extension/presentation.qmd` and `paper-extension/writeup.qmd`

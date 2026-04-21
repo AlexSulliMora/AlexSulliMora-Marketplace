@@ -1,5 +1,5 @@
 ---
-name: summarize
+name: paper-summarize
 description: This skill should be used when the user asks to "summarize a paper", "read and summarize", "summarize this PDF", "analyze this paper", "what does this paper say", "break down this paper", or provides a PDF path and wants a structured summary. It reads an academic economics paper, produces a structured draft via the paper-summarizer agent, and then hands the draft to /CASM-tools:review-document for the creator/reviewer quality loop.
 argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
@@ -41,15 +41,15 @@ If the PDF is at `Paper/paper.pdf`, create:
 
 ```
 Paper/paper-extension/
-Paper/paper-extension/summary-logs/
+Paper/paper-extension/paper-summary-logs/
 Paper/paper-extension/session-logs/
 ```
 
-If `paper-extension/summary.md` already exists, confirm with the user before overwriting.
+If `paper-extension/paper-summary.md` already exists, confirm with the user before overwriting.
 
 ### 2. Preprocess paper (auto)
 
-Invoke the `CASM-tools:preprocess` skill via the Skill tool, passing the absolute PDF path. The preprocess skill will ask the user whether to generate a markdown cache (reduces LLM token usage but takes 10–20 min on CPU) or skip straight to PDF reading. Either answer is acceptable — `paper-summarizer` falls back to the PDF when `paper.md` is absent.
+Invoke the `CASM-tools:paper-preprocess` skill via the Skill tool, passing the absolute PDF path. The preprocess skill will ask the user whether to generate a markdown cache (reduces LLM token usage but takes 10–20 min on CPU) or skip straight to PDF reading. Either answer is acceptable — `paper-summarizer` falls back to the PDF when `paper.md` is absent.
 
 **When preprocess returns, continue immediately to step 3.** A cache hit, a freshly generated `paper.md`, or a skip-decision are all acceptable outcomes — none is a stopping point. Do not pause or report to the user until the full pipeline is complete.
 
@@ -59,7 +59,7 @@ Dispatch the `paper-summarizer` agent via the Agent tool. Include in the dispatc
 
 - The absolute PDF path
 - The `paper-extension/paper.md` path (if it exists) as the preferred source
-- Instruction to write the draft directly to `paper-extension/summary.md`
+- Instruction to write the draft directly to `paper-extension/paper-summary.md`
 
 The preference-injection hook injects writing and structure style preferences into the dispatch prompt automatically.
 
@@ -70,22 +70,22 @@ The paper-summarizer writes v0 of the summary to the canonical live location. `/
 Build the cascade logs directory path using the current timestamp (24-hour PST, `YY-MM-DDTHH-MM`):
 
 ```
-LOGS_DIR="paper-extension/summary-logs/summary-<YY-MM-DDTHH-MM>"
+LOGS_DIR="paper-extension/paper-summary-logs/paper-summary-<YY-MM-DDTHH-MM>"
 ```
 
-Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/summary.md` and the `into <dir>` clause pointing at that directory:
+Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/paper-summary.md` and the `into <dir>` clause pointing at that directory:
 
 ```
-args: "all paper-extension/summary.md into paper-extension/summary-logs/summary-<YY-MM-DDTHH-MM>"
+args: "all paper-extension/paper-summary.md into paper-extension/paper-summary-logs/paper-summary-<YY-MM-DDTHH-MM>"
 ```
 
-The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/summary.md` automatically (no interactive checkpoint). All cascade artifacts — versions, `reviewer-logs/`, `thorough/`, `summary-final.md`, `summary-combined-scorecard.md` — land inside the named logs directory.
+The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/paper-summary.md` automatically (no interactive checkpoint). All cascade artifacts — versions, `reviewer-logs/`, `thorough/`, `paper-summary-final.md`, `paper-summary-combined-scorecard.md` — land inside the named logs directory.
 
 Record the cascade's logs directory path in the session log.
 
 ### 5. (Removed — no mirroring needed)
 
-Because the cascade already writes into `paper-extension/summary-logs/summary-<timestamp>/`, no copy step is required. The meta-review skill reads directly from that location.
+Because the cascade already writes into `paper-extension/paper-summary-logs/paper-summary-<timestamp>/`, no copy step is required. The meta-review skill reads directly from that location.
 
 ### 6. Finalize
 
@@ -94,16 +94,16 @@ Append to the session log: live summary path, final cascade scores, number of ac
 Report to the user:
 
 ```
-Summary finalized: paper-extension/summary.md
-Cascade logs: paper-extension/summary-logs/summary-<timestamp>/
+Summary finalized: paper-extension/paper-summary.md
+Cascade logs: paper-extension/paper-summary-logs/paper-summary-<timestamp>/
 Final scores: [from cascade]
 Accepted outstanding items: [count]
 ```
 
 ## Output
 
-- `paper-extension/summary.md` — the finalized summary
-- `paper-extension/summary-logs/summary-<timestamp>/` — full cascade trail (versions, reviewer-logs/, thorough/, summary-final.md, summary-combined-scorecard.md)
+- `paper-extension/paper-summary.md` — the finalized summary
+- `paper-extension/paper-summary-logs/paper-summary-<timestamp>/` — full cascade trail (versions, reviewer-logs/, thorough/, paper-summary-final.md, paper-summary-combined-scorecard.md)
 - `paper-extension/session-logs/YYYY-MM-DD_summarize.md` — pipeline-level log
 
 ## Error handling

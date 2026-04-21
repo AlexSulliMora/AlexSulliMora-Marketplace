@@ -1,5 +1,5 @@
 ---
-name: extend
+name: paper-extend
 description: This skill should be used when the user asks to "extend this paper", "propose extensions", "suggest research extensions", "what extensions could be made", or wants ideas for extending a summarized paper. It generates research extension proposals via the extension-proposer agent, then hands the draft to /CASM-tools:review-document for the creator/reviewer quality loop.
 argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob", "Agent", "Skill"]
@@ -21,8 +21,8 @@ The extension-proposer's style preferences are injected automatically by the plu
 ## Prerequisites
 
 - A PDF file path must be provided as an argument
-- A finalized summary must exist at `paper-extension/summary.md`
-- If no summary exists, instruct the user to run `/CASM-tools:summarize` first
+- A finalized summary must exist at `paper-extension/paper-summary.md`
+- If no summary exists, instruct the user to run `/CASM-tools:paper-summarize` first
 
 ## Session Logging
 
@@ -37,13 +37,13 @@ The extension-proposer's style preferences are injected automatically by the plu
 
 ### 1. Verify inputs
 
-Check the PDF and `paper-extension/summary.md` both exist. Create `paper-extension/extensions-logs/` if missing.
+Check the PDF and `paper-extension/paper-summary.md` both exist. Create `paper-extension/extensions-logs/` if missing.
 
 ### 2. Preprocess paper (auto)
 
 If `paper-extension/paper.md` already exists (from a prior summarize or preprocess run on this paper), **skip this step entirely** — do not invoke preprocess. The downstream extension-proposer will read the existing `paper.md` cache, and re-prompting the user about preprocessing would be redundant.
 
-If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
+If `paper.md` does NOT exist, invoke `CASM-tools:paper-preprocess` via the Skill tool. The paper-preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
 
 **When preprocess returns, continue immediately to step 3.** A cache hit, a freshly generated `paper.md`, a skip-decision, or the step being skipped entirely (because `paper.md` already existed) are all acceptable outcomes — none is a stopping point. Do not pause or report to the user until the full pipeline is complete.
 
@@ -53,7 +53,7 @@ Dispatch the `extension-proposer` agent via the Agent tool. Include:
 
 - The absolute PDF path
 - The `paper-extension/paper.md` path (if it exists)
-- The `paper-extension/summary.md` path
+- The `paper-extension/paper-summary.md` path
 - Instruction to write the draft directly to `paper-extension/extensions.md`
 
 The preference-injection hook injects writing + structure preferences into the dispatch prompt automatically.

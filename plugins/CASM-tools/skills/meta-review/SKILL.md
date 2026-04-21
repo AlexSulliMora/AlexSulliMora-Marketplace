@@ -70,7 +70,7 @@ For each paper-extension directory, gather:
 - Paper title (from the most recent session log's header)
 - Stages completed
 - Final composite scores per stage (from the combined scorecard inside each stage's cascade logs)
-- Cascade logs directory paths (recorded in stage session logs — e.g. `paper-extension/summary-logs/summary-<ts>/`)
+- Cascade logs directory paths (recorded in stage session logs — e.g. `paper-extension/paper-summary-logs/paper-summary-<ts>/`)
 - Any outstanding items at cascade end (from the combined scorecard's "Unresolved" section)
 - Most recent activity date
 
@@ -92,7 +92,7 @@ Format:
 - **Most recent activity:** [date]
 - **Stages completed:** Summarize / Extend / Present
 - **Final scores:** Summarize: F=89 M=94 W=82; Extend: …; Present: …
-- **Cascade logs:** summary: paper-extension/summary-logs/summary-<ts>/; extend: …; present: …
+- **Cascade logs:** summary: paper-extension/paper-summary-logs/paper-summary-<ts>/; extend: …; present: …
 - **Unresolved at cascade end:** summary: N; extend: M; present: K
 ```
 
@@ -106,7 +106,7 @@ Report the count to the user. If N > 10, pause and ask whether to proceed with t
 - Learnings → user-recorded observations
 - Cascade logs paths
 
-**Combined scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/<stage>-combined-scorecard.md`):
+**Combined scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/<stage>-combined-scorecard.md` — where `<stage>` is `paper-summary` for the summarize stage, `extensions` for extend, and `presentation-logs/cascade-<ts>/<artifact>` for present):
 - Per-reviewer composite scores at cascade end
 - Items recurring across iterations within one run
 - Any unresolved items from tier cleanup skips or CRITICAL-at-cap halts

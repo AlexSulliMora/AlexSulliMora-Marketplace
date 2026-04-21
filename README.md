@@ -2,7 +2,7 @@
 
 Personal Claude Code plugin marketplace. Ships one plugin:
 
-- **CASM-tools** — tiered creator/reviewer review cascade (`/CASM-tools:review-document`) for multi-axis review of drafts, code, and documents, plus an academic-paper pipeline (`summarize`, `extend`, `present`) that uses the same cascade for its internal quality loops. Nine reviewer agents, three paper-pipeline creator agents, and shared `preferences/` files control scoring, severity calibration, and style rules.
+- **CASM-tools** — tiered creator/reviewer review cascade (`/CASM-tools:review-document`) for multi-axis review of drafts, code, and documents, plus an academic-paper pipeline (`paper-summarize`, `paper-extend`, `paper-present`, `paper-preprocess`, `paper-full-pipeline`) that uses the same cascade for its internal quality loops. Nine reviewer agents, three paper-pipeline creator agents, and shared `preferences/` files control scoring, severity calibration, and style rules.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ Personal Claude Code plugin marketplace. Ships one plugin:
 - [uv](https://github.com/astral-sh/uv) — used by the hook scripts. Install once:
   - **Windows**: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"`
   - **Mac/Linux**: `curl -LsSf https://astral.sh/uv/install.sh | sh`
-- For the paper pipeline (summarize / extend / present): [Quarto](https://quarto.org/docs/get-started/), `pdftoppm` (poppler-utils), and `marker-pdf`.
+- For the paper pipeline (paper-summarize / paper-extend / paper-present): [Quarto](https://quarto.org/docs/get-started/), `pdftoppm` (poppler-utils), and `marker-pdf`.
 
 ## Install
 
@@ -38,6 +38,6 @@ plugins/
     agents/            — 9 reviewers + 3 paper-pipeline creators
     preferences/       — 9 style/scoring files (user-editable)
     scripts/           — shared reviewer infrastructure
-    skills/            — review-document, summarize, extend, present, preprocess, run, meta-review
+    skills/            — review-document, paper-summarize, paper-extend, paper-present, paper-preprocess, paper-full-pipeline, meta-review
     hooks/             — inject-preferences.py, session-log-reminder.py, verify-reminder.py
 ```

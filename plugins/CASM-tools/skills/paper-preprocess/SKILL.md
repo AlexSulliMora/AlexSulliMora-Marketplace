@@ -1,6 +1,6 @@
 ---
-name: preprocess
-description: This skill converts an academic paper PDF into a markdown cache (paper.md) using marker-pdf so downstream agents can prefer a pre-parsed text cache over re-reading the PDF on every iteration. Triggers on "preprocess paper", "convert paper to markdown", and is invoked automatically at the start of summarize, extend, present, and run whenever paper.md does not exist or is stale relative to the source PDF.
+name: paper-preprocess
+description: This skill converts an academic paper PDF into a markdown cache (paper.md) using marker-pdf so downstream agents can prefer a pre-parsed text cache over re-reading the PDF on every iteration. Triggers on "preprocess paper", "convert paper to markdown", and is invoked automatically at the start of paper-summarize, paper-extend, paper-present, and paper-full-pipeline whenever paper.md does not exist or is stale relative to the source PDF.
 argument-hint: "<path-to-paper.pdf>"
 allowed-tools: ["Read", "Write", "Bash", "Grep", "Glob"]
 ---
@@ -18,8 +18,8 @@ Convert the paper PDF to markdown so downstream agents read a pre-parsed text ca
 
 ## When to run
 
-- **Manually** via `/CASM-tools:preprocess <path-to-paper.pdf>`
-- **Automatically** at the start of `/CASM-tools:summarize`, `/CASM-tools:extend`, `/CASM-tools:present`, and `/CASM-tools:run`. Each of those skills invokes preprocess when `paper.md` does not exist or its `source_sha256` frontmatter does not match the current PDF's checksum.
+- **Manually** via `/CASM-tools:paper-preprocess <path-to-paper.pdf>`
+- **Automatically** at the start of `/CASM-tools:paper-summarize`, `/CASM-tools:paper-extend`, `/CASM-tools:paper-present`, and `/CASM-tools:paper-full-pipeline`. Each of those skills invokes paper-preprocess when `paper.md` does not exist or its `source_sha256` frontmatter does not match the current PDF's checksum.
 
 Users do not normally invoke this skill directly — the other pipeline stages do it for them.
 
@@ -194,7 +194,7 @@ Create `paper-extension/session-logs/YYYY-MM-DD_preprocess.md` from `${CLAUDE_PL
 - marker-pdf's first run downloads ~2 GB of models. Subsequent papers reuse the cached models.
 - CPU conversion takes 10–20 minutes for typical papers; GPU is much faster. The step-0 prompt exists so the user can opt out when that cost doesn't match the current task.
 - If marker-pdf is not installed, the pipeline keeps working; it just loses the speedup. Install with `pip install marker-pdf` to unlock it.
-- The prompt in step 0 is asked on every invocation. Pipeline skills (`summarize`, `extend`, `present`, `run`) that invoke preprocess automatically will surface this prompt to the user before doing work — so the user decides per-paper whether to pay the conversion cost.
+- The prompt in step 0 is asked on every invocation. Pipeline skills (`paper-summarize`, `paper-extend`, `paper-present`, `paper-full-pipeline`) that invoke paper-preprocess automatically will surface this prompt to the user before doing work — so the user decides per-paper whether to pay the conversion cost.
 
 ## Troubleshooting
 
