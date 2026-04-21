@@ -11,7 +11,12 @@ Create a slide presentation and manuscript writeup from a finalized summary and 
 
 ## Preference injection (automatic via preference-injection hook)
 
-The CASM-tools plugin's `PreToolUse` hook intercepts the `presentation-builder` dispatch and prepends `writing-style.md` + `structure-style.md` + `presentation-style.md` to the prompt. The `presentation-style.md` file is shared with the presentation-reviewer, so builder output and reviewer scoring stay aligned. Dispatch the creator normally — the hook does the rest.
+The presentation-builder's style preferences are injected automatically by the plugin's PreToolUse hook before the subagent spawns. The builder and presentation-reviewer share the same presentation style preferences, so initial draft output and reviewer scoring stay aligned.
+
+> **Dispatch exactly the task. Do not add preferences.**
+> The hook prepends the relevant style preferences automatically.
+> If you include preference content manually, the agent receives it twice.
+> If the hook is disabled, the agent's body carries a fallback pointer.
 
 The post-cascade screenshot-based presentation-review pass (step 6 below) also receives its preferences via the hook.
 
@@ -132,7 +137,7 @@ When the cascade's main session writes a revision, recompile and re-render scree
 
 ### 6. Screenshot-based presentation review (post-cascade)
 
-After `/CASM-tools:review-document` returns with an accepted version, dispatch `presentation-reviewer` manually via the Agent tool with the screenshot directory explicitly in the prompt. The preference-injection hook injects `presentation-style.md` preferences automatically; you only need to provide inputs and task in the prompt.
+After `/CASM-tools:review-document` returns with an accepted version, dispatch `presentation-reviewer` manually via the Agent tool with the screenshot directory explicitly in the prompt. The preference-injection hook injects presentation style preferences automatically; you only need to provide inputs and task in the prompt.
 
 ```
 Agent(

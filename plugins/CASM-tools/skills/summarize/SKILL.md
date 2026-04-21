@@ -11,9 +11,12 @@ Read an academic paper from a PDF and produce a structured summary. The initial 
 
 ## Preference injection (automatic via preference-injection hook)
 
-The CASM-tools plugin registers a `PreToolUse` hook that intercepts Agent dispatches to known creator agents (`paper-summarizer`, `extension-proposer`, `presentation-builder`) and prepends the relevant style preferences from `${CLAUDE_PLUGIN_ROOT}/preferences/` to the dispatch prompt. `paper-summarizer` receives `writing-style.md` + `structure-style.md` automatically, so the creator drafts against the same rules the review cascade scores against.
+The paper-summarizer's style preferences are injected automatically by the plugin's PreToolUse hook before the subagent spawns. This ensures the creator drafts against the same rules the review cascade scores against.
 
-Dispatch the creator normally — the hook does the rest. The creator agent's body also carries a fallback "read preferences file directly if not injected" pointer for the case where the hook is disabled.
+> **Dispatch exactly the task. Do not add preferences.**
+> The hook prepends the relevant style preferences to the paper-summarizer's prompt automatically.
+> If you include preference content manually, the agent receives it twice.
+> If the hook is disabled, the agent's body carries a fallback "read preferences if not injected" pointer — the agent handles recovery, not the orchestrator.
 
 ## Prerequisites
 
@@ -58,7 +61,7 @@ Dispatch the `paper-summarizer` agent via the Agent tool. Include in the dispatc
 - The `paper-extension/paper.md` path (if it exists) as the preferred source
 - Instruction to write the draft directly to `paper-extension/summary.md`
 
-The preference-injection hook injects `writing-style.md` and `structure-style.md` preferences into the dispatch prompt automatically.
+The preference-injection hook injects writing and structure style preferences into the dispatch prompt automatically.
 
 The paper-summarizer writes v0 of the summary to the canonical live location. `/CASM-tools:review-document` will snapshot this as its v1 baseline.
 

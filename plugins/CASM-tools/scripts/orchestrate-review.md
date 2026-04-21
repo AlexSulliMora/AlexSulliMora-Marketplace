@@ -56,7 +56,7 @@ Reviewers are grouped into five scope tiers (see `reviewer-tiers.md`). Each tier
      a. applicable = intersect(tier.reviewers, selected reviewer list)
      b. If applicable is empty: skip tier, continue
      c. For iteration in 1..3 (per-tier cap):
-          i.   Dispatch applicable reviewers in parallel against the latest snapshot (each dispatch is a fresh Agent call, not a SendMessage to a reused reviewer — fresh dispatch avoids anchoring bias).
+          i.   Dispatch applicable reviewers in parallel against the latest snapshot (each dispatch is a fresh Agent call, not a SendMessage to a reused reviewer — fresh dispatch avoids anchoring bias). Dispatch prompts contain only the snapshot path and scorecard output path; do not add preferences (the hook injects them automatically).
           ii.  Each reviewer produces a scorecard; save to [artifact-logs]/reviewer-logs/tier[T]-iter[N]-[reviewer].md
           iii. Merge the tier's scorecards → [artifact-logs]/reviewer-logs/tier[T]-iter[N]-merged.md
           iv.  Update session log with tier/iteration scores and CRITICAL issues
