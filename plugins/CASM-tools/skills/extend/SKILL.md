@@ -38,7 +38,9 @@ Check the PDF and `paper-extension/summary.md` both exist. Create `paper-extensi
 
 If `paper-extension/paper.md` already exists (from a prior summarize or preprocess run on this paper), **skip this step entirely** — do not invoke preprocess. The downstream extension-proposer will read the existing `paper.md` cache, and re-prompting the user about preprocessing would be redundant.
 
-If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet. Proceed regardless of outcome.
+If `paper.md` does NOT exist, invoke `CASM-tools:preprocess` via the Skill tool. The preprocess skill self-short-circuits when a prior decision (generate or skip) is recorded against the current PDF's SHA256, so it will only prompt the user when there is genuinely no recorded choice yet.
+
+**When preprocess returns, continue immediately to step 3.** A cache hit, a freshly generated `paper.md`, a skip-decision, or the step being skipped entirely (because `paper.md` already existed) are all acceptable outcomes — none is a stopping point. Do not pause or report to the user until the full pipeline is complete.
 
 ### 3. Initial draft from extension-proposer
 
