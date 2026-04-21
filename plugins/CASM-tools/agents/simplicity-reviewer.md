@@ -18,7 +18,6 @@ tools:
   - "Bash(ruff:*)"
   - "Bash(vulture:*)"
   - "Bash(python -c:*)"
-tier: 3
 ---
 
 You are a code and text simplicity reviewer.

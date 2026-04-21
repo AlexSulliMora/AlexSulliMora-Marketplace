@@ -11,7 +11,6 @@ description: |
 model: inherit
 color: red
 tools: ["Read", "Write", "Grep", "Glob"]
-tier: 2
 ---
 
 You are a mathematical economist who verifies the logical and mathematical consistency of academic content.

@@ -11,7 +11,6 @@ description: |
 model: inherit
 color: cyan
 tools: ["Read", "Write", "Grep", "Glob"]
-tier: 1
 ---
 
 You are a consistency auditor specializing in academic research communication.

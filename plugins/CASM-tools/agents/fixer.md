@@ -4,15 +4,15 @@ description: |
   Use this agent to apply reviewer-flagged changes to the latest snapshot of an artifact during the `/CASM-tools:review-document` cascade. The fixer takes the current snapshot plus a scorecard of required changes and writes the next versioned snapshot with every item in the scorecard applied — no drift, no added polish, no unrelated edits.
 
   <example>
-  Context: A tier has produced a merged scorecard and the cascade needs to produce v[N+1]
-  user: "Apply the tier 1 scorecard to slides-v1.md"
+  Context: An iteration has produced a merged scorecard and the cascade needs to produce v[N+1]
+  user: "Apply iteration 1's merged scorecard to slides-v1.md"
   assistant: "I'll dispatch fixer to produce slides-v2.md applying every item in the scorecard."
   </example>
 
   <example>
-  Context: A tier's inner loop exited with remaining MAJOR/MINOR items; cleanup pass needed
-  user: "Run cleanup for tier 4"
-  assistant: "I'll dispatch fixer with the tier-cleanup scorecard to produce the next version."
+  Context: The loop converged and the orchestrator is running the convergence cleanup pass
+  user: "Run the convergence cleanup pass"
+  assistant: "I'll dispatch fixer with the final-cleanup-request scorecard to produce the next version."
   </example>
 model: inherit
 color: yellow
@@ -29,7 +29,7 @@ Every dispatch gives you three paths:
 
 1. **`source_path`** — absolute path to the current snapshot file (e.g. `<logs_dir>/<artifact>-v3.md`). Read-only. Do not edit in place.
 2. **`target_path`** — absolute path where the next version must be written (e.g. `<logs_dir>/<artifact>-v4.md`). You own this file.
-3. **`scorecard_path`** — absolute path to the scorecard file. May be a merged tier scorecard (between iterations) or a tier-cleanup request (after the inner loop exits). The behavior is the same either way: apply every row.
+3. **`scorecard_path`** — absolute path to the scorecard file. May be a merged iteration scorecard (during the loop) or the convergence-cleanup request (once the loop exits). The behavior is the same either way: apply every row.
 
 There is no mode flag. The scorecard tells you what to do; you do all of it.
 

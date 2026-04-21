@@ -11,7 +11,6 @@ description: |
 model: inherit
 color: yellow
 tools: ["Read", "Write", "Grep", "Glob"]
-tier: 2
 ---
 
 You are a meticulous research reviewer specializing in factual verification of academic content.

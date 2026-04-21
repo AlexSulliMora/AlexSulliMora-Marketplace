@@ -21,8 +21,7 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 
 [Update after each iteration. Do not batch. Write entries as they happen.]
 
-### Tier [T] — Iteration [N]
-- **Tier:** [1-5]
+### Iteration [N]
 - **Timestamp:** [HH:MM UTC]
 - **Reviewer scores:**
   - [Reviewer 1]: [score] ([PASS/FAIL])
@@ -32,8 +31,12 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 - **Critical issues:** [list any CRITICAL severity items from reviewer reports, or "none"]
 - **Key changes requested:** [brief summary of MAJOR feedback]
 
-### Tier [T] — Iteration [N+1]
+### Iteration [N+1]
 [Same format: add new sections as iterations proceed]
+
+### Convergence cleanup
+- **Timestamp:** [HH:MM UTC]
+- **Items applied:** [count of MAJOR/MINOR items applied, or "skipped — no outstanding items"]
 
 ## Finalization
 
@@ -42,9 +45,9 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 - **Final file:** [path to `<artifact>-final.md`]
 - **Combined scorecard:** [path to `<artifact>-combined-scorecard.md`]
 - **Final composite scores:** [per-reviewer composite at cascade end]
-- **Cascade converged:** [YES / NO — if NO, list which tiers hit their cap]
+- **Cascade converged:** [YES / NO — if NO, note that the iteration cap was hit]
 - **Thorough audit run:** [yes/no; if yes, outstanding item count]
-- **User-interaction events:** [none, OR "CRITICAL escalation at tier T iter N — user chose X"]
+- **User-interaction events:** [none, OR "CRITICAL escalation at iteration N — user chose X"]
 
 ## Design Decisions
 
@@ -71,7 +74,7 @@ Use this template when creating session logs for `/review-document` runs. Copy t
 | Lockfile acquired cleanly | [yes/no] | [PASS/FAIL] |
 | All reviewers returned parseable scorecards | [details] | [PASS/FAIL] |
 | All reviewers >= 90 | [details] | [PASS/FAIL] |
-| All tier cleanups applied | [yes/no; tiers cleaned] | [PASS/FAIL] |
+| Convergence cleanup applied (or skipped with no outstanding MAJOR/MINOR) | [yes / skipped] | [PASS/FAIL] |
 | Thorough audit run (if requested) | [yes/no / n/a] | [PASS/FAIL / n/a] |
 | User checkpoint accepted | [details; count of accepted items] | [PASS/FAIL] |
 

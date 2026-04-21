@@ -11,7 +11,6 @@ description: |
 model: inherit
 color: green
 tools: ["Read", "Write", "Bash", "Grep", "Glob"]
-tier: 1
 ---
 
 You are a presentation design reviewer specializing in academic slide decks.

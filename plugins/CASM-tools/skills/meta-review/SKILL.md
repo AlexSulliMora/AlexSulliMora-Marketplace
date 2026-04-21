@@ -36,7 +36,7 @@ Paths below are all under `${CLAUDE_PLUGIN_ROOT}/` — abbreviated `<plugin>/` i
 - **Reviewer agents** (shared):
   - `<plugin>/agents/*-reviewer.md`
 - **Shared scripts** (shared):
-  - `<plugin>/scripts/{reviewer-common,orchestrate-review,reviewer-tiers,loop-engine}.md`
+  - `<plugin>/scripts/{reviewer-common,orchestrate-review,loop-engine}.md`
 
 When proposing shared-scope changes, flag them explicitly — they affect every `/CASM-tools:review-document` invocation, not just paper work.
 
@@ -109,9 +109,9 @@ Report the count to the user. If N > 10, pause and ask whether to proceed with t
 **Combined scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/<stage>-combined-scorecard.md` — where `<stage>` is `paper-summary` for the summarize stage, `extensions` for extend, and `presentation-logs/cascade-<ts>/<artifact>` for present):
 - Per-reviewer composite scores at cascade end
 - Items recurring across iterations within one run
-- Any unresolved items from tier cleanup skips or CRITICAL-at-cap halts
+- Any unresolved items from the convergence cleanup or CRITICAL-at-cap halts
 
-**Per-iteration merged scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/reviewer-logs/tier[T]-iter[N]-merged.md`):
+**Per-iteration merged scorecards** (`paper-extension/<stage>-logs/<stage>-<ts>/reviewer-logs/iter[N]-merged.md`):
 - Use when you need detail the combined scorecard doesn't provide (e.g. tracing which iteration first surfaced an issue).
 
 ### 4. Cluster recurring issues
