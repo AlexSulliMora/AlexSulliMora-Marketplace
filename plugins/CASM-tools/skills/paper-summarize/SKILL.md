@@ -73,13 +73,13 @@ Build the cascade logs directory path using the current timestamp (24-hour PST, 
 LOGS_DIR="paper-extension/paper-summary-logs/paper-summary-<YY-MM-DDTHH-MM>"
 ```
 
-Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all` on `paper-extension/paper-summary.md` and the `into <dir>` clause pointing at that directory:
+Invoke the `CASM-tools:review-document` skill via the Skill tool with scope `all`, the `advisory adversarial` clause, and the `into <dir>` clause pointing at that directory:
 
 ```
-args: "all paper-extension/paper-summary.md into paper-extension/paper-summary-logs/paper-summary-<YY-MM-DDTHH-MM>"
+args: "all advisory adversarial paper-extension/paper-summary.md into paper-extension/paper-summary-logs/paper-summary-<YY-MM-DDTHH-MM>"
 ```
 
-The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/paper-summary.md` automatically (no interactive checkpoint). All cascade artifacts — versions, `reviewer-logs/`, `thorough/`, `paper-summary-final.md`, `paper-summary-combined-scorecard.md` — land inside the named logs directory.
+The `all` scope enables factual-reviewer (not auto-selected) alongside writing, structure, math, simplicity, adversarial reviewers. The `advisory adversarial` clause marks the adversarial reviewer as non-gating: its scorecard still merges into the per-iteration aggregate so the fixer attempts any items it can apply, but its pass/fail status does not block convergence. This matters for paper summaries because adversarial concerns are frequently research-level ("identification hinges on an undefended assumption") and cannot be resolved by textual edits; leaving them gating would stall every summary behind research concerns the fixer cannot address. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/paper-summary.md` automatically (no interactive checkpoint). All cascade artifacts — versions, `reviewer-logs/`, `thorough/`, `paper-summary-final.md`, `paper-summary-combined-scorecard.md` — land inside the named logs directory. Adversarial findings remain visible in the combined scorecard tagged `(advisory)` so the researcher can review them after finalization.
 
 Record the cascade's logs directory path in the session log.
 
@@ -116,3 +116,4 @@ Accepted outstanding items: [count]
 
 - The paper-summarizer agent receives writing + structure preferences in its prompt, so its initial draft is aligned with what the cascade scores against. Its own agent body carries a fallback "read preferences if not provided" instruction for when it is dispatched directly.
 - Revisions during the cascade are written by the main session, not by paper-summarizer. The summarizer only produces v0.
+- The adversarial reviewer runs in advisory mode by default in this pipeline, so its findings are visible but non-gating. Advanced users who want the adversarial reviewer to gate convergence can invoke `/CASM-tools:review-document all paper-extension/paper-summary.md` directly without the `advisory adversarial` clause.

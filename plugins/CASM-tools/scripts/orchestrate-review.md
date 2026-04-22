@@ -12,7 +12,7 @@ Within this document:
 
 `/review-document` selects reviewers dynamically from a closed scope-token grammar defined in `${CLAUDE_PLUGIN_ROOT}/skills/review-document/SKILL.md`. No flag syntax is accepted.
 
-- **Explicit scope phrase** (`/review-document for writing only`) — parsed by the skill into a reviewer list. Tokens matching known reviewer names (`writing`, `structure`, `math`, `code`, `simplicity`, `adversarial`, `presentation`, `consistency`, `factual`) select those reviewers. Two additional tokens modify behavior: `all` (dispatch every reviewer, including factual) and `thorough` (run a final audit pass after the cascade finalizes). The `into <dir>` token overrides the default logs directory.
+- **Explicit scope phrase** (`/review-document for writing only`) — parsed by the skill into a reviewer list. Tokens matching known reviewer names (`writing`, `structure`, `math`, `code`, `simplicity`, `adversarial`, `presentation`, `consistency`, `factual`) select those reviewers. Two additional tokens modify behavior: `all` (dispatch every reviewer, including factual) and `thorough` (run a final audit pass after the cascade finalizes). The `into <dir>` token overrides the default logs directory. The repeatable `advisory <reviewer>` clause marks individual reviewers as non-gating for this invocation — their scorecards still contribute items to the fixer, but their pass/fail status does not gate convergence. Grammar details and the validation rules live in the skill.
 - **Empty scope** — the skill classifies applicable reviewers from artifact type (e.g., `.py` file → `code-reviewer` + `simplicity-reviewer`; `.md` prose → `writing-reviewer` + `structure-reviewer`; `.qmd` with math → `writing-reviewer` + `structure-reviewer` + `math-reviewer`; compiled slides → `presentation-reviewer`). Selection is announced before dispatch.
 - **`factual-reviewer` is never auto-selected.** It runs only when the user names it explicitly (`/review-document factual paper.md` or `/review-document all paper.md`).
 
@@ -41,7 +41,7 @@ Every cascade writes into `[artifact-logs]/` with this structure:
 
 ## Loop Structure
 
-All selected reviewers run in parallel against the current snapshot each iteration. The orchestrator merges every reviewer's scorecard into a single aggregated list and dispatches the fixer once per iteration against that list. The loop terminates when every reviewer passes (composite ≥ `threshold` AND zero CRITICAL) or when the iteration cap is reached. The threshold and cap are configurable per invocation via the `threshold <N>` and `iterations <N>` scope tokens (defaults: threshold 80, iterations 3). On convergence (or at the cap with no CRITICAL remaining), a final fixer pass applies any remaining MAJOR/MINOR items before finalization. No re-review follows the convergence cleanup.
+All selected reviewers run in parallel against the current snapshot each iteration. The orchestrator merges every reviewer's scorecard into a single aggregated list and dispatches the fixer once per iteration against that list. The loop terminates when every gating reviewer passes (composite ≥ `threshold` AND zero CRITICAL) or when the iteration cap is reached. "Gating" means every reviewer not marked advisory via the `advisory <reviewer>` clause — advisory reviewers still contribute to the merged scorecard and still feed the fixer, but they are excluded from the convergence check and from the cap-halt CRITICAL check so the cascade finalizes even when an advisory reviewer has not passed. The threshold and cap are configurable per invocation via the `threshold <N>` and `iterations <N>` scope tokens (defaults: threshold 80, iterations 3). On convergence (or at the cap with no CRITICAL remaining), a final fixer pass applies any remaining MAJOR/MINOR items before finalization. No re-review follows the convergence cleanup.
 
 **The cascade operates on snapshots in `[artifact-logs]`, not the live file.** The live file at the artifact path is copied once to `[artifact-logs]/[artifact]-v1.md` at loop start and is then read-only until the cascade finalizes. Every revision during the cascade writes a new versioned snapshot (`[artifact]-v2.md`, `v3.md`, ...); reviewers always read the latest snapshot.
 
@@ -57,11 +57,13 @@ All selected reviewers run in parallel against the current snapshot each iterati
      b. Each reviewer produces a scorecard; save to [artifact-logs]/reviewer-logs/iter[N]-[reviewer].md
      c. Merge all scorecards → [artifact-logs]/reviewer-logs/iter[N]-merged.md
      d. Update session log with iteration scores and CRITICAL issues
-     e. If every reviewer passes (composite ≥ threshold [default 80] AND zero CRITICAL):
+     e. If every gating reviewer passes (composite ≥ threshold [default 80] AND zero CRITICAL):
           break loop, go to step 6 (convergence cleanup)
+        Advisory reviewers (if any) are excluded from this check.
      f. If iteration == max_iterations:
-          If any CRITICAL remains: halt and escalate to user.
+          If any CRITICAL remains on a gating reviewer: halt and escalate to user.
           Else: break loop (MAJOR/MINOR will be handled in step 6).
+        Advisory reviewer CRITICALs flow through to the combined scorecard tagged `(advisory)` and never trigger the halt.
      g. Dispatch `fixer` agent to produce the next version → [artifact-logs]/[artifact]-v[next].md (scorecard_path = the iteration's merged scorecard)
      h. Hash the latest snapshot; on external-edit mismatch to the live file (user edited it during the cascade), halt with user prompt
 6. Convergence cleanup: if the final iteration's merged scorecard has any MAJOR or MINOR items remaining (no CRITICAL at this point — the CRITICAL path halts above), write [artifact-logs]/final-cleanup-request.md with those items and dispatch `fixer` once to produce the next version. No re-review — the next phase uses the cleaned snapshot as the finalized version.
@@ -125,12 +127,12 @@ Within a loop iteration, merge the reviewers' scorecards into a single per-itera
 # Iteration [N] Scorecard — [artifact]
 
 ## Iteration Status: [PASS/FAIL]
-[List which reviewers passed and which failed, with composite scores]
+[List which reviewers passed and which failed, with composite scores. Tag advisory reviewers with `(advisory)` next to the name — their pass/fail does not gate the iteration.]
 
 ## Critical Issues Summary
-[List all CRITICAL severity items across reviewers in this iteration — these must be addressed before the loop can advance]
+[List all CRITICAL severity items across gating reviewers — these must be addressed before the loop can advance. CRITICAL items raised by advisory reviewers are listed separately under "Advisory findings" and do not block advancement.]
 
-## [Reviewer Name] Review
+## [Reviewer Name] Review   <!-- append `(advisory)` to the heading if advisory -->
 [Full scorecard from that reviewer]
 **Individual report:** `reviewer-logs/iter[N]-[reviewer].md`
 
@@ -145,10 +147,12 @@ At the end, concatenate every final scorecard into the combined scorecard at `[a
 ## Cascade summary
 | Phase | Reviewers | Converged | CRITICAL | MAJOR | MINOR | Version after |
 |---|---|---|---|---|---|---|
-| Iteration 1 | writing, structure | NO | 0 | 3 | 5 | v2 |
-| Iteration 2 | writing, structure | YES | 0 | 1 | 2 | v2 |
+| Iteration 1 | writing, structure, adversarial (advisory) | NO | 0 | 3 | 5 | v2 |
+| Iteration 2 | writing, structure, adversarial (advisory) | YES | 0 | 1 | 2 | v2 |
 | Convergence cleanup | — (fixer only) | — | 0 | 0 | 0 | v3 |
 | Thorough (audit only) | writing, structure (parallel) | — | 0 | 1 | 2 | — |
+
+Reviewers dispatched in advisory mode are tagged `(advisory)` in the Reviewers column. Their CRITICAL count is reported for visibility but is not counted against convergence.
 
 ## Version trail
 - v1: baseline snapshot of the live file at cascade start.
@@ -170,10 +174,10 @@ At the end, concatenate every final scorecard into the combined scorecard at `[a
 
 Per-iteration pass/fail is the only evaluation during the loop:
 
-- **Iteration pass:** every reviewer in `reviewer_list` scores composite ≥ `threshold` (default 80) AND zero CRITICAL items.
-- If any reviewer fails the threshold, the loop iterates again (up to `max_iterations`, default 3) with a fixer dispatch between iterations.
-- The fixer receives the iteration's merged scorecard as `scorecard_path` for each in-loop revision.
-- CRITICAL severity items block loop advancement. A loop that hits its cap with CRITICAL remaining halts and escalates to the user.
+- **Iteration pass:** every reviewer in `reviewer_list \ advisory_reviewers` (the gating reviewers) scores composite ≥ `threshold` (default 80) AND zero CRITICAL items. Advisory reviewers still dispatch and still contribute scorecard items to the fixer, but they are not consulted for pass/fail.
+- If any gating reviewer fails the threshold, the loop iterates again (up to `max_iterations`, default 3) with a fixer dispatch between iterations.
+- The fixer receives the iteration's merged scorecard as `scorecard_path` for each in-loop revision. The merged scorecard includes advisory reviewer items — the fixer applies every row, regardless of which reviewer raised it.
+- CRITICAL severity items on gating reviewers block loop advancement. A loop that hits its cap with such a CRITICAL remaining halts and escalates to the user. CRITICAL items raised only by advisory reviewers do not halt the cascade.
 - MAJOR and MINOR items remaining at the end of the loop are cleaned up by one final fixer dispatch (scorecard_path = `final-cleanup-request.md`) before finalization. The cleanup pass is not re-reviewed — the finalized snapshot is whatever the convergence-cleanup fixer wrote.
 - Iteration cap of `max_iterations` (default 3). Thorough pass: 1 dispatch, no fixes.
 - On parse failure for a reviewer's scorecard: re-dispatch that reviewer once; if the second attempt also parses poorly, mark the reviewer `failed to parse`, exclude from the iteration composite, flag to user, continue.
@@ -212,6 +216,7 @@ The design principle: the fixer applies every item the reviewers flag. If the us
 **Installed version:** [artifact]-v[N].md (copied to [artifact_path])
 **Final file:** [artifact]-final.md
 **Cascade converged:** [YES / NO — if NO, note whether the iteration cap was hit]
+**Advisory reviewers:** [comma-separated list, or "none"]   <!-- only rendered when non-empty -->
 **Logs directory:** [artifact-logs]/
 
 ### Cascade summary
@@ -226,7 +231,10 @@ The design principle: the fixer applies every item the reviewers flag. If the us
 | Reviewer | Composite | Status |
 |---|---|---|
 | [Reviewer 1] | [score] | [PASS/FAIL] |
+| [Advisory Reviewer] (advisory) | [score] | [PASS/FAIL — informational] |
 | ...
+
+Advisory reviewers are tagged `(advisory)` and their Status is labeled informational. A FAIL on an advisory reviewer is visible here but did not block cascade finalization.
 
 ### Thorough audit
 [Included only if the user invoked with `thorough`. Brief summary + pointer to `thorough/combined-scorecard.md`. Items NOT applied.]
@@ -279,4 +287,4 @@ If the final iteration completes with CRITICAL issues remaining:
 3. Release the lockfile.
 4. The next `/review-document` invocation on this artifact auto-detects `REVIEW_SUSPENDED.md` and resumes from the saved state. No explicit resume command is needed.
 
-This is the only user-interaction point in the cascade. It is an error-path escalation, not a routine checkpoint — it fires when a CRITICAL-severity item could not be driven to zero within the configured iteration cap. Routine runs do not prompt the user at all.
+This is the only user-interaction point in the cascade. It is an error-path escalation, not a routine checkpoint — it fires when a CRITICAL-severity item on a **gating** reviewer could not be driven to zero within the configured iteration cap. Advisory reviewers never trigger this escalation regardless of what they flag. Routine runs do not prompt the user at all.

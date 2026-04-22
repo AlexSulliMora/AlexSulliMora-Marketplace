@@ -52,7 +52,7 @@ paper-extension/session-logs/
 
 Announce:
 
-> Starting full pipeline for [paper name]. Four stages: paper-preprocess, paper-summarize, paper-extend, paper-present. Each review stage hands its draft to `/CASM-tools:review-document`, which runs the tiered cascade and installs the final version automatically. No interactive checkpoints — the cascade is deterministic. I will pause only if: (a) preprocess needs the up-front generate-markdown-or-skip choice, (b) the extension-proposer requests supplementary papers, or (c) a tier hits its cap with CRITICAL items unresolved.
+> Starting full pipeline for [paper name]. Four stages: paper-preprocess, paper-summarize, paper-extend, paper-present. Each review stage hands its draft to `/CASM-tools:review-document`, which runs the cascade and installs the final version automatically. The adversarial reviewer runs in advisory mode across all three review stages, so its research-level concerns stay visible in the scorecard without blocking convergence. The review cascades themselves are non-interactive, but the extend stage pauses once at a candidate checkpoint so the researcher can steer direction before the agent commits deep-dive effort. I will pause only if: (a) preprocess needs the up-front generate-markdown-or-skip choice, (b) the extend stage reaches its candidate checkpoint (accept / pick / revise), (c) the extension-proposer requests supplementary papers during the deep-dive phase, or (d) a non-advisory reviewer hits the iteration cap with CRITICAL items unresolved.
 
 ### 2. Stage 0: Preprocess (auto)
 
@@ -110,8 +110,9 @@ Invoke `CASM-tools:paper-present` via the Skill tool, passing through the scope 
 The pipeline is designed to run end-to-end without prompting. The only interactions:
 
 1. **Preprocess choice** (stage 0, at most once): generate markdown via `marker_single` or skip. Decision is durable per-SHA, so stages 1–3 do not re-prompt.
-2. **Supplementary paper requests** (stage 2 only): the extension-proposer may pause with a list of papers it wants. Provide PDFs or tell the agent to proceed without them.
-3. **CRITICAL escalation** (error path): if the cascade hits its iteration cap with CRITICAL items unresolved, `/CASM-tools:review-document` blocks with continue/suspend/fix-manually. This does not fire on routine runs.
+2. **Candidate checkpoint** (stage 2, always): the extend stage pauses after generating candidate extensions and ranking, before producing the deep dive. The researcher can accept the agent's top-ranked candidate, pick a different one, or request a revised candidate list. Revise rounds are uncapped. This checkpoint exists because the deep dive commits substantial write-up effort to a single direction; letting the agent pick unilaterally risks finalizing a write-up the researcher would have redirected.
+3. **Supplementary paper requests** (stage 2 deep-dive phase only): after the candidate is chosen, the extension-proposer may pause with a list of papers it wants, scoped to the chosen direction. Provide PDFs or tell the agent to proceed without them.
+4. **CRITICAL escalation** (error path): if the cascade hits its iteration cap with CRITICAL items unresolved on a **gating** reviewer, `/CASM-tools:review-document` blocks with continue/suspend/fix-manually. Because the adversarial reviewer runs in advisory mode for all three review stages, adversarial CRITICALs never trigger this path — the cascade finalizes and the adversarial findings appear in the combined scorecard tagged `(advisory)` for later review. This escalation only fires when writing, structure, math, simplicity, factual, consistency, code, or presentation reviewers cannot be driven to zero CRITICAL within the iteration cap, which does not happen on routine runs.
 
 No interactive checkpoints at the end of each review stage. Each cascade installs its final version automatically. If the user wants a different version, they copy it from the cascade's logs directory manually.
 

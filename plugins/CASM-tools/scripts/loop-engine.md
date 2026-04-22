@@ -13,6 +13,7 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 - `logs_dir` — path to the review logs directory. Default: `docs/reviews/<artifact-basename>-<YY-MM-DD>T<HH-MM>/` relative to the repo root, where time is 24-hour PST. May be overridden by the caller (e.g. the pipeline skills pass their own log folders via the `into <dir>` token). See `orchestrate-review.md` for the full naming rule.
 - `threshold` — integer in [0, 100]. Per-reviewer composite score required to pass. Default: `80`. Set via the `threshold <N>` scope token.
 - `max_iterations` — integer in [1, 10]. Maximum number of loop iterations before hitting the cap. Default: `3`. Set via the `iterations <N>` scope token.
+- `advisory_reviewers` — subset of `reviewer_list` whose pass/fail status does not gate convergence. Default: empty set. Set via repeated `advisory <reviewer>` scope clauses. Advisory reviewers still dispatch every iteration, still write scorecards to `reviewer-logs/`, and their items still merge into the per-iteration aggregate that the fixer applies. Only the convergence check (step 4f) and the cap-halt CRITICAL check (step 4g) are affected: both use `reviewer_list \ advisory_reviewers` rather than the full list.
 - `thorough` — boolean. When true, the engine runs a final parallel audit pass after the cascade finalizes, saving results to `logs_dir/thorough/` without applying any findings.
 - `session_id` — from hook context; recorded in the lock and session log.
 
@@ -51,6 +52,7 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
 | `thorough_scorecard_path` | `logs_dir/thorough/combined-scorecard.md` (only if `thorough=true`). |
 | `combined_scorecard_path` | `logs_dir/[artifact]-combined-scorecard.md`. Written once at cascade end. |
 | `reviewer_parse_failures` | Set of reviewer names whose scorecards failed to parse (excluded after one retry). |
+| `advisory_reviewers` | Subset of `reviewer_list` whose pass/fail status does not gate convergence. Carried as engine state so resume payloads can preserve the classification. See convergence (step 4f) and cap-halt (step 4g) below. |
 
 ## Main cascade
 
@@ -59,7 +61,7 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
    - Attempt flock on lockfile. If already held → return "artifact under review, retry later."
    - Write {pid, start_time, session_id, live_file_hash} into lockfile.
 
-2. Check for `logs_dir/REVIEW_SUSPENDED.md`. If present, validate the saved state's shape matches the current engine (no `tier` field from the prior tiered design). If the shape is the old tiered format, halt with "suspended under old schema, delete REVIEW_SUSPENDED.md and restart." Otherwise, auto-resume from the saved state (reviewers, iteration, version) rather than starting fresh. Announce: "Resuming suspended review from [timestamp]."
+2. Check for `logs_dir/REVIEW_SUSPENDED.md`. If present, validate the saved state's shape matches the current engine (no `tier` field from the prior tiered design). If the shape is the old tiered format, halt with "suspended under old schema, delete REVIEW_SUSPENDED.md and restart." Otherwise, auto-resume from the saved state (reviewers, iteration, version, advisory_reviewers) rather than starting fresh. If the saved state predates the advisory classification and does not include an `advisory_reviewers` field, default it to the empty set — the resumed cascade then behaves exactly as a pre-advisory cascade and no halt is needed. Announce: "Resuming suspended review from [timestamp]."
 
 3. Snapshot baseline (only on fresh start — skipped on resume):
      mkdir -p logs_dir/reviewer-logs
@@ -83,15 +85,18 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
        c. Collect scorecards, validate, handle parse failures per Recovery actions.
        d. Merge → logs_dir/reviewer-logs/iter[iteration]-merged.md.
        e. Update session log.
-       f. If every reviewer in `reviewer_list` passes (composite ≥ `threshold` AND zero CRITICAL):
+       f. Let gating_reviewers = reviewer_list \ advisory_reviewers.
+          If every reviewer in gating_reviewers passes (composite ≥ `threshold` AND zero CRITICAL):
             final_scorecard_path = logs_dir/reviewer-logs/iter[iteration]-merged.md
             break loop
+          Advisory reviewers are never required to pass; their scorecards remain in the merged aggregate so the fixer still attempts any mechanically applicable items, but their composite score and their CRITICAL count are ignored by this check. If gating_reviewers is empty (every selected reviewer was marked advisory), the check is vacuously true on the first iteration; the loop exits immediately. This is intentional — the caller explicitly said nothing is gating.
        g. If iteration == max_iterations:
             final_scorecard_path = logs_dir/reviewer-logs/iter[iteration]-merged.md
-            if any CRITICAL remains:
+            if any CRITICAL remains on a reviewer in gating_reviewers:
               halt_cascade_and_checkpoint(reason="iteration cap exhausted with CRITICAL items remaining")
             else:
               break loop  # MAJOR/MINOR handled by the cleanup step below
+          CRITICAL items raised by advisory reviewers never trigger the halt; they flow through to the combined scorecard as informational and are visible with the `(advisory)` tag.
        h. Dispatch `fixer` agent to apply the iteration's merged scorecard:
           - source_path = current_snapshot_path
           - target_path = logs_dir/[artifact]-v[version+1].md
@@ -139,8 +144,8 @@ The cascade does not modify the live file at `artifact_path` during the loop. Th
      d. release_lock()
      e. return DONE.
 
-9. Cap exhaustion with CRITICAL remaining:
-      write logs_dir/REVIEW_SUSPENDED.md with full state (iteration, version, reviewer_list, threshold, max_iterations, thorough flag, logs_dir).
+9. Cap exhaustion with CRITICAL remaining on a gating reviewer:
+      write logs_dir/REVIEW_SUSPENDED.md with full state (iteration, version, reviewer_list, advisory_reviewers, threshold, max_iterations, thorough flag, logs_dir).
       Escalate to the user with a blocking prompt: continue the halted loop, suspend, or fix manually. This is an error-path escalation, not a routine checkpoint — it only fires when a CRITICAL-severity item could not be driven to zero within the configured iteration cap.
       release_lock()
       On next `/review-document` invocation for this artifact, the skill detects the suspended file and auto-resumes.
@@ -177,7 +182,7 @@ There is no `mode` field. The fixer always applies every item in the scorecard e
 | Reviewer scorecard parse failure (second time) | Mark reviewer "failed to parse", exclude from iteration composite, flag to user, continue. |
 | Fixer returns empty/refusal | Retry once with refusal reason prepended. If still empty, surface to user and halt. |
 | Fixer writes to a path other than `target_path` | Treat the extra write as an error. Revert the extra write (from git or the pre-dispatch state) and halt. |
-| Iteration cap hit with CRITICAL remaining | Halt cascade, suspend or checkpoint. User decides whether to continue the halted loop, finalize anyway, or fix manually. The cap is whatever `max_iterations` was set to (default 3). |
+| Iteration cap hit with CRITICAL remaining on a gating reviewer | Halt cascade, suspend or checkpoint. User decides whether to continue the halted loop, finalize anyway, or fix manually. The cap is whatever `max_iterations` was set to (default 3). CRITICAL items on advisory reviewers never trigger this path — they finalize normally and appear tagged in the combined scorecard. |
 | Old-schema `REVIEW_SUSPENDED.md` detected on resume (contains `tier` field from the prior tiered engine) | Halt with "suspended under old schema, delete REVIEW_SUSPENDED.md and restart." |
 | Loop crashes mid-iteration | Lockfile TTL is advisory (OS lock drops on process death). On next invocation, if lockfile exists but flock succeeds, treat as stale and resume from last saved state. |
 

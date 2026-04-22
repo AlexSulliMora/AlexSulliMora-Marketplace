@@ -8,7 +8,7 @@ allowed-tools: ["Read", "Write", "Edit", "Bash", "Grep", "Glob", "Agent"]
 
 # /CASM-tools:review-document
 
-Run the creator/reviewer parallel cascade on a named artifact. Dispatches all selected reviewers in parallel each iteration, merges their scorecards into one aggregated list, and dispatches the fixer once per iteration to apply the aggregate. The loop ends when every reviewer passes (composite ≥ threshold AND zero CRITICAL) or after `iterations` iterations; a final cleanup fixer pass then applies any remaining MAJOR/MINOR items before finalization. Threshold and iteration cap are configurable per invocation (defaults: 80, 3). Optionally runs a thorough audit pass. Installs the final version at the live path automatically. No interactive checkpoint — the cascade is deterministic. The user's override path is a shell `cp` from the logs directory.
+Run the creator/reviewer parallel cascade on a named artifact. Dispatches all selected reviewers in parallel each iteration, merges their scorecards into one aggregated list, and dispatches the fixer once per iteration to apply the aggregate. The loop ends when every gating reviewer passes (composite ≥ threshold AND zero CRITICAL) or after `iterations` iterations; a final cleanup fixer pass then applies any remaining MAJOR/MINOR items before finalization. Threshold and iteration cap are configurable per invocation (defaults: 80, 3). Individual reviewers can be marked advisory via the `advisory <reviewer>` clause so they still run and contribute findings but do not gate convergence; this is how the paper-* pipelines treat the adversarial reviewer. Optionally runs a thorough audit pass. Installs the final version at the live path automatically. No interactive checkpoint — the cascade is deterministic. The user's override path is a shell `cp` from the logs directory.
 
 This skill is the user-facing surface. The state machine lives in `${CLAUDE_PLUGIN_ROOT}/scripts/loop-engine.md`; the reviewer protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/reviewer-common.md`; the end-to-end cascade protocol lives in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-review.md`. Read those for details not covered here.
 
@@ -36,7 +36,7 @@ See "Examples" below for concrete walkthroughs. Invoking `/CASM-tools:review-doc
 
 ## Argument parsing
 
-Parse `$ARGUMENTS` in this order. The grammar is closed: no flags, only paths, scope tokens, and an optional `into <dir>` clause. Filler words (`the`, `for`, `only`, `just`, `on`, `against`, `a`) are stripped.
+Parse `$ARGUMENTS` in this order. The grammar is closed: no flags, only paths, scope tokens, and the optional `into <dir>`, `threshold <N>`, `iterations <N>`, and `advisory <reviewer>` clauses. Filler words (`the`, `for`, `only`, `just`, `on`, `against`, `a`) are stripped.
 
 ### 1. Extract path tokens
 
@@ -69,6 +69,15 @@ If the arguments contain the two-token sequence `iterations <N>`, the `<N>` toke
 
 - `<N>` must be an integer in [1, 10]; anything else errors out: "iterations must be an integer between 1 and 10".
 - Only one `iterations <N>` clause is permitted per invocation.
+
+### 1d. Extract `advisory <reviewer>` clause (optional, repeatable)
+
+If the arguments contain the two-token sequence `advisory <reviewer>`, the `<reviewer>` token marks that reviewer as advisory for this invocation. Advisory reviewers still dispatch every iteration, still write scorecards into `reviewer-logs/`, and their items still merge into the per-iteration aggregate that the fixer applies. Only the pass-gate arithmetic changes: advisory reviewers are excluded from the convergence check and from the cap-check CRITICAL halt, so the cascade finalizes even when an advisory reviewer has not passed. This is the mechanism the paper-* pipeline skills use to let the adversarial reviewer surface research-level concerns without blocking convergence on a summary or extension draft that cannot mechanically resolve them.
+
+- `<reviewer>` must be one of the scope tokens from the table below (e.g. `adversarial`, `math`, `presentation`). It is resolved to the matching reviewer agent name (e.g. `adversarial-reviewer`).
+- The advisory target must appear in the final reviewer list (after scope-token expansion, `all`, or auto-classification). If it does not, error out: `"advisory target '<tok>' is not in the selected reviewer list"`.
+- The clause is repeatable: name one reviewer per `advisory` clause; use multiple clauses to mark multiple reviewers advisory.
+- An unknown reviewer token in an `advisory` clause triggers the same "Unknown scope tokens" error as elsewhere in the grammar.
 
 ### 2. Scope tokens (closed grammar)
 
@@ -111,15 +120,16 @@ The `thorough` token, if present, applies after the reviewer list is resolved. I
 
 ### 4. Announce
 
-Before dispatching, print a flat announcement naming the selected reviewers and the effective threshold and iteration cap. The thorough audit line appears only when the `thorough` token was present. Threshold and iteration lines always appear; each notes `(default)` or `(overridden)` so the configuration is visible at the top of every cascade.
+Before dispatching, print a flat announcement naming the selected reviewers and the effective threshold and iteration cap. The thorough audit line appears only when the `thorough` token was present. The advisory line appears only when at least one reviewer is marked advisory; it lists the advisory reviewer names so users can see at a glance which reviewers are informational rather than gating. Threshold and iteration lines always appear; each notes `(default)` or `(overridden)` so the configuration is visible at the top of every cascade.
 
 ```
 cascade: <artifact-path>
   reviewers: <r1>, <r2>, <r3>, ...
+  advisory: <ra>, <rb>                              <-- only if at least one advisory reviewer
   threshold: <N> (default|overridden)
   iterations: <N> (default|overridden)
   convergence cleanup: ON (automatic)
-  thorough audit: ON (requested)   <-- only if `thorough` token present
+  thorough audit: ON (requested)                    <-- only if `thorough` token present
 ```
 
 If no reviewer applies to this artifact, error out: "no applicable reviewers for this artifact. Check scope or file type."
@@ -164,7 +174,7 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 - Resolve the artifact (above).
 - Acquire the lock (above).
 - Announce the selected reviewers, threshold, and iteration cap (above).
-- Call the loop-engine state machine with the artifact path, reviewer list, logs directory, threshold, max iterations, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns. Reviewer dispatch prompts contain only the snapshot path and scorecard output path — nothing else.
+- Call the loop-engine state machine with the artifact path, reviewer list, logs directory, threshold, max iterations, advisory-reviewer set, and `thorough` flag. Dispatch each reviewer via the Agent tool normally; the plugin's PreToolUse hook handles preferences injection before the subagent spawns. Reviewer dispatch prompts contain only the snapshot path and scorecard output path — nothing else.
 - Print the terminal report (see `orchestrate-review.md` § Finalization) when the engine returns. No interactive checkpoint — the engine has already installed the final version at the live path.
 
 ### Key cascade behaviors
@@ -172,7 +182,7 @@ The full cascade is specified in `${CLAUDE_PLUGIN_ROOT}/scripts/orchestrate-revi
 - **The live file is not modified during the cascade.** Baseline snapshot is `<logs_dir>/<artifact>-v1.md`. Every revision writes a new version (v2, v3, ...). Reviewers always read the latest snapshot. At cascade end, the final version is installed at the live path automatically.
 - All selected reviewers run in parallel each iteration; iterations run sequentially.
 - The orchestrator merges every reviewer's scorecard for an iteration into a single aggregate at `<logs_dir>/reviewer-logs/iter[N]-merged.md`. The fixer reads that single aggregate and applies every row.
-- The loop runs up to `iterations` iterations (default 3) and ends when every reviewer passes (composite ≥ `threshold` AND zero CRITICAL — default threshold 80), or at the iteration cap with no CRITICAL remaining.
+- The loop runs up to `iterations` iterations (default 3) and ends when every gating reviewer passes (composite ≥ `threshold` AND zero CRITICAL — default threshold 80), or at the iteration cap with no CRITICAL remaining among gating reviewers. "Gating" means every reviewer not marked advisory via the `advisory <reviewer>` clause; advisory reviewers are excluded from both the convergence check and the cap-halt CRITICAL check.
 - After the loop exits, a single convergence-cleanup fixer dispatch applies any remaining MAJOR/MINOR items. No re-review follows.
 - If `thorough` was requested, run a final parallel audit pass against the finalized version. Results save to `<logs_dir>/thorough/`. No fixes applied.
 - **Revisions are produced by the `fixer` agent, not by the main session.** The orchestrator passes (source_path, target_path, scorecard_path) and the fixer applies every item in the scorecard. No mode flag. See `${CLAUDE_PLUGIN_ROOT}/agents/fixer.md`.
@@ -215,7 +225,8 @@ If the user consistently disagrees with what gets flagged, the right fix is to e
 | Fixer returns empty / refusal | Retry once with refusal text prepended. If still empty, surface and halt cascade. |
 | Fixer writes outside its `target_path` | Treat as error; revert the extra write and halt. |
 | External edit to live file during cascade | Halt with prompt: "live file edited externally — restart, continue from current snapshot, or abort?" |
-| Iteration cap hit with CRITICAL remaining | Escalate to the user (blocking prompt: continue / suspend / fix manually). If the user is AFK, write `REVIEW_SUSPENDED.md` and release lock; next invocation auto-resumes. |
+| Iteration cap hit with CRITICAL remaining on a gating reviewer | Escalate to the user (blocking prompt: continue / suspend / fix manually). If the user is AFK, write `REVIEW_SUSPENDED.md` and release lock; next invocation auto-resumes. CRITICAL items on advisory reviewers never trigger this escalation. |
+| Advisory target not in selected reviewer list | Error: `"advisory target '<tok>' is not in the selected reviewer list"`. No silent ignore. |
 | Convergence cleanup fixer skipped an item (row genuinely unapplicable) | Item stays in the combined scorecard as unresolved. Cascade still finalizes; the user can re-run `/review-document` after adjusting preferences or manually editing the live file. |
 | Concurrent `/CASM-tools:review-document` on same artifact | Rejected by lockfile. |
 | Unknown scope token | Print "Unknown scope tokens: ... Did you mean ...?" and halt. No silent best-guess. |
@@ -319,6 +330,27 @@ User has just written a paragraph-long research idea in chat.
 ```
 
 If `<logs_dir>/REVIEW_SUSPENDED.md` exists (prior cascade halted with CRITICAL items unresolved), the skill auto-detects and resumes from the saved state; no explicit resume command is needed.
+
+### Advisory reviewer (paper-pipeline pattern)
+
+```
+/CASM-tools:review-document all advisory adversarial paper-extension/paper-summary.md into paper-extension/paper-summary-logs/paper-summary-26-04-22T09-15
+```
+
+1. Path tokens: `paper-extension/paper-summary.md`.
+2. `into <dir>`: sets `logs_dir = paper-extension/paper-summary-logs/paper-summary-26-04-22T09-15`.
+3. `advisory adversarial`: marks `adversarial-reviewer` advisory for this invocation. Validated against the final reviewer list (below) before the engine is called.
+4. Scope tokens: `all` expands to every reviewer including factual, so `adversarial-reviewer` is present and the advisory target resolves cleanly.
+5. Announce:
+   ```
+   cascade: paper-extension/paper-summary.md
+     reviewers: adversarial-reviewer, code-reviewer, consistency-reviewer, factual-reviewer, math-reviewer, presentation-reviewer, simplicity-reviewer, structure-reviewer, writing-reviewer
+     advisory: adversarial-reviewer
+     threshold: 80 (default)
+     iterations: 3 (default)
+     convergence cleanup: ON (automatic)
+   ```
+6. Cascade proceeds. Adversarial-reviewer still dispatches every iteration and its items still feed the fixer; only the convergence check and the cap-halt treat adversarial as non-gating. If every other reviewer passes while adversarial still flags a CRITICAL research concern, the cascade finalizes and the adversarial scorecard appears in the combined scorecard tagged `(advisory)` for downstream readers.
 
 ### Overridden threshold and iteration cap
 
