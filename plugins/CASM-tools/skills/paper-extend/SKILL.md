@@ -76,13 +76,13 @@ Build the cascade logs directory path using the current timestamp (24-hour PST, 
 LOGS_DIR="paper-extension/extensions-logs/extensions-<YY-MM-DDTHH-MM>"
 ```
 
-Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on `paper-extension/extensions.md` and the `into <dir>` clause:
+Invoke `CASM-tools:review-document` via the Skill tool with scope `all`, the `advisory adversarial` clause, and the `into <dir>` clause:
 
 ```
-args: "all paper-extension/extensions.md into paper-extension/extensions-logs/extensions-<YY-MM-DDTHH-MM>"
+args: "all advisory adversarial paper-extension/extensions.md into paper-extension/extensions-logs/extensions-<YY-MM-DDTHH-MM>"
 ```
 
-The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/extensions.md` automatically (no interactive checkpoint). All cascade artifacts land inside the named logs directory.
+The `advisory adversarial` clause marks the adversarial reviewer as non-gating. Its scorecard still merges into the per-iteration aggregate so the fixer applies any mechanically addressable items, but its pass/fail status does not gate convergence. Research extension proposals in particular attract adversarial CRITICALs that are speculative or cannot be resolved without new evidence; letting them gate convergence would stall finalization on issues the fixer cannot close. The cascade handles iteration via the `fixer` agent and installs the final version at `paper-extension/extensions.md` automatically (no interactive checkpoint). All cascade artifacts land inside the named logs directory, with adversarial findings tagged `(advisory)` in the combined scorecard for later review.
 
 ### 6. (Removed — no mirroring needed)
 
@@ -114,3 +114,4 @@ Supplementary papers requested: [N], provided: [M]
 - Extensions should propose directions, not solve models or run regressions.
 - For theoretical papers, focus on assumption relaxation that changes economic intuition — not complexity for its own sake.
 - For empirical papers, focus on new settings, complementary papers, or mechanism tests.
+- The adversarial reviewer runs in advisory mode by default in this pipeline. Its findings remain visible in the combined scorecard but do not gate convergence. Advanced users who want adversarial to gate convergence can invoke `/CASM-tools:review-document all paper-extension/extensions.md` directly without the `advisory adversarial` clause.

@@ -123,13 +123,13 @@ Build the cascade logs directory path using the current timestamp (24-hour PST, 
 LOGS_DIR="paper-extension/presentation-logs/cascade-<YY-MM-DDTHH-MM>"
 ```
 
-Invoke `CASM-tools:review-document` via the Skill tool with scope `all` on both artifacts and the `into <dir>` clause:
+Invoke `CASM-tools:review-document` via the Skill tool with scope `all`, the `advisory adversarial` clause, and the `into <dir>` clause, passing both artifact paths:
 
 ```
-args: "all paper-extension/presentation.qmd paper-extension/writeup.qmd into paper-extension/presentation-logs/cascade-<YY-MM-DDTHH-MM>"
+args: "all advisory adversarial paper-extension/presentation.qmd paper-extension/writeup.qmd into paper-extension/presentation-logs/cascade-<YY-MM-DDTHH-MM>"
 ```
 
-Passing both paths triggers consistency-reviewer automatically. The `all` scope includes factual, writing, structure, math, simplicity, adversarial, consistency, and presentation reviewers. All cascade artifacts land inside the named logs directory.
+Passing both paths triggers consistency-reviewer automatically. The `all` scope includes factual, writing, structure, math, simplicity, adversarial, consistency, and presentation reviewers. The `advisory adversarial` clause marks the adversarial reviewer as non-gating so research-level concerns on the summary or extension sections do not stall finalization of the presentation and writeup; adversarial findings remain visible in the combined scorecard tagged `(advisory)`. All cascade artifacts land inside the named logs directory.
 
 **Known limitation:** the cascade does not forward a screenshot directory to presentation-reviewer, so its cascade-internal review falls back to source-based review. Step 6 below addresses this with a post-cascade screenshot pass.
 
