@@ -1,0 +1,9 @@
+{
+  "name": "coauthor",
+  "version": "0.1.0",
+  "description": "Run a five-stage research workflow (scope, plan, work, review, finalize) with named worker agents, document artifacts per project, and a promotable validator library.",
+  "author": {
+    "name": "Alex Sullivan",
+    "email": "sullivancas@gmail.com"
+  }
+}

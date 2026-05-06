@@ -1,0 +1,200 @@
+---
+title: "Report title"
+subtitle: "*Optional italic subtitle*"
+author: "Author"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    code-fold: true
+    embed-resources: true
+    page-layout: full
+execute:
+  warning: false
+  message: false
+---
+
+```{=html}
+<style>
+/* ===== Wrap printed Python output (no horizontal scroll for narrative text) =====
+   Both <pre> and <pre><code> need targeting; Pandoc nests stdout text inside
+   <code>, and Quarto/Bootstrap defaults set `pre { overflow: auto }` which we
+   override with !important so wrapping wins. */
+pre,
+pre code,
+.cell-output pre,
+.cell-output-stdout pre,
+.cell-output-stdout pre code,
+.sourceCode pre {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-x: visible !important;
+}
+
+/* ===== Scrollable great_tables container =====
+   Each great_tables output is wrapped in <div class="gt-scroll"> via the
+   show_table() helper.  The outer .gt-scroll is the SOLE scroll container;
+   we neutralize the inner gt div's inline overflow:auto so sticky thead
+   works against the outer wrapper instead of the inner one. */
+.gt-scroll {
+  max-height: 560px !important;
+  max-width: 100% !important;
+  overflow: auto !important;
+  border: 1px solid #ddd;
+  margin-bottom: 1em;
+  position: relative;
+}
+.gt-scroll > div {
+  overflow: visible !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+.gt-scroll .gt_table {
+  font-size: 11px !important;
+  /* Fill the container when narrower than the viewport, but never squish
+     columns below their natural no-wrap width.  When content needs more
+     room than the container, min-width:max-content drives horizontal
+     scroll on the outer .gt-scroll. */
+  width: 100% !important;
+  min-width: max-content !important;
+  margin: 0 !important;
+}
+.gt-scroll .gt_table th,
+.gt-scroll .gt_table td {
+  padding: 3px 8px !important;
+  white-space: nowrap !important;
+  line-height: 1.25 !important;
+}
+
+/* ===== Sticky thead =====
+   Apply sticky to <th> cells (more reliable than <tr>).  Title/subtitle
+   <th> cells are NOT sticky -- they scroll out as the user scrolls down,
+   leaving only the spanner row (when present) and the column-label row
+   pinned. */
+.gt-scroll thead .gt_column_spanner_outer {
+  position: sticky !important;
+  top: 0;
+  background: white;
+  z-index: 12;
+  box-shadow: 0 1px 0 #ddd;
+}
+.gt-scroll thead .gt_col_heading {
+  position: sticky !important;
+  top: 0;
+  background: white;
+  z-index: 11;
+  box-shadow: 0 1px 0 #ddd;
+}
+/* When a spanner row exists, the column-label row underneath sticks at
+   top: 26px (below the spanner row).  But great_tables emits rowspan=2
+   <th> cells in the spanner row for any column without a spanner; those
+   cells live in the same DOM row as the spanner cells and must stick at
+   top: 0 like their spanner siblings.  The :not([rowspan]) selector
+   excludes them from the +26px shift. */
+.gt-scroll:has(.gt_column_spanner_outer) thead .gt_col_heading:not([rowspan]) {
+  top: 26px;
+}
+</style>
+```
+
+```{python}
+#| include: false
+from pathlib import Path
+import polars as pl
+import great_tables as gt
+from IPython.display import HTML
+
+DATA = Path("data")  # adjust to your project layout
+
+# Optional: shorten verbose published category/industry names to match the
+# source paper's display conventions.  Override the dict per-project.
+DISPLAY_NAME_OVERRIDES: dict[int, str] = {
+    # 28: "Industrial Mining",
+    # 38: "Meas. & Control Equipment",
+}
+
+
+def show_table(gt_obj, max_height: str = "560px") -> HTML:
+    """Wrap a great_tables in <div class="gt-scroll"> so long tables get a
+    vertical scroll bar with a sticky thead, and wide tables get a
+    horizontal scroll bar without disrupting the column headers."""
+    return HTML(
+        f'<div class="gt-scroll" style="max-height:{max_height}">'
+        f'{gt_obj.as_raw_html()}'
+        f'</div>'
+    )
+
+
+# Compact-row option set applied to every great_tables table in the report.
+COMPACT_OPTS = dict(
+    table_font_size="11px",
+    data_row_padding="2px",
+    column_labels_padding="3px",
+    heading_padding="3px",
+    row_group_padding="2px",
+    table_layout="auto",
+)
+```
+
+# 1. Overview
+
+Replace this section with the report's headline result in one short paragraph.
+
+# 2. Methodology
+
+Describe data sources, sample window, key methodological choices, and any
+discretionary decisions that affect the output.
+
+# 3. Results
+
+```{python}
+#| echo: false
+# Example: load a parquet, format, and render.
+# df = pl.read_parquet(DATA / "results.parquet")
+#
+# show_table(
+#     gt.GT(df)
+#     .tab_header(title="Results", subtitle="Brief description of units")
+#     .cols_label(col_a="Label A", col_b="Label B")
+#     .fmt_number(columns=["pct_col"], decimals=0)
+#     .fmt_date(columns="date_col", date_style="iso")
+#     .sub_missing(missing_text="—")
+#     .tab_options(**COMPACT_OPTS)
+# )
+```
+
+## Comparison-style table (with spanners)
+
+```{python}
+#| echo: false
+# Example: side-by-side comparison of two versions of paired metrics.
+#
+# show_table(
+#     gt.GT(df_compare)
+#     .tab_header(title="Published vs replicated", subtitle="...")
+#     .tab_spanner(label="12m raw",        columns=["x_pub", "x_repl"])
+#     .tab_spanner(label="24m raw",        columns=["y_pub", "y_repl"])
+#     .tab_spanner(label="24m max DD",     columns=["dd_pub", "dd_repl"])
+#     .cols_label(
+#         label_col="Series",
+#         x_pub="pub",   x_repl="repl",
+#         y_pub="pub",   y_repl="repl",
+#         dd_pub="pub",  dd_repl="repl",
+#     )
+#     .fmt_number(columns=[c for c in df_compare.columns if c.endswith(("_pub", "_repl"))], decimals=0)
+#     .fmt_date(columns="date_col", date_style="iso")
+#     .sub_missing(missing_text="—")
+#     .tab_options(**COMPACT_OPTS)
+# )
+```
+
+# 4. Discussion
+
+Describe what the results mean, where they diverge from prior work, and any
+limitations the reader should know about.
+
+# Sources
+
+- [Reference 1](#)
+- [Reference 2](#)

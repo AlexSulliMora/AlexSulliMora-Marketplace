@@ -1,0 +1,15 @@
+{
+  "name": "AlexSulliMora-Marketplace",
+  "owner": {
+    "name": "Alex Sullivan",
+    "email": "sullivancas@gmail.com"
+  },
+  "description": "Personal Claude Code plugin marketplace.",
+  "plugins": [
+    {
+      "name": "coauthor",
+      "source": "./plugins/coauthor",
+      "description": "Five-stage research workflow (scope, plan, work, review, finalize) with named worker agents (analyst, coder, writer, reviewer, researcher), per-project document artifacts, a three-tier audit log, and a promotable validator library."
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "description": "Coauthor audit hooks: capture user prompts, Agent/SendMessage dispatches, and assistant responses into <cwd>/coauthor/audit/. Matcher 'Agent|SendMessage' uses regex alternation (per https://code.claude.com/docs/en/hooks: any matcher containing chars beyond letters/digits/_/escaped-pipe is treated as JS regex). Sub-agent dispatch tool is 'Agent' (not 'Task') in current Claude Code builds; 'SendMessage' is captured for the user's standing-worker SendMessage variant.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/audit_user.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Agent|SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/audit_dispatch.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/audit_response.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

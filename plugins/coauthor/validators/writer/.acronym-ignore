@@ -1,0 +1,28 @@
+# Per-project acronym ignore list for the coauthor plugin's own files.
+# One token per line. Lines starting with # are comments.
+# These are project-internal terms used as filenames or stage labels.
+SCOPE
+PLAN
+IMPL
+REVIEW
+CONVENTIONS
+INDEX
+MEMORY
+NOT
+PM
+AI
+JSON
+ALL
+ASCII
+DGP
+TUI
+TOC
+CLI
+SDK
+API
+CSS
+HTML
+JS
+URL
+TODO
+README
